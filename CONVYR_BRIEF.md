@@ -70,7 +70,7 @@ A simple dashboard where any business — no tech skills needed — can connect 
 | Background Tasks | Celery |
 | Frontend | Next.js |
 | WhatsApp | Meta Cloud API |
-| Payments | M-Pesa Daraja API + Stripe |
+| Payments | PayHero API (M-Pesa STK Push) |
 | Hosting (Backend) | Render |
 | Hosting (Frontend) | Vercel |
 
@@ -81,7 +81,7 @@ A simple dashboard where any business — no tech skills needed — can connect 
 1. Business signup and WhatsApp number connection
 2. Auto-reply to incoming customer messages
 3. Simple dashboard to manage replies and conversations
-4. M-Pesa payment integration for subscriptions
+4. PayHero payment integration for subscriptions (M-Pesa STK Push)
 
 ---
 
@@ -104,7 +104,7 @@ convyr/
 │   │   │   ├── businesses.py       # Business management
 │   │   │   ├── contacts.py         # Customer contacts
 │   │   │   ├── automations.py      # Auto-reply rules
-│   │   │   └── payments.py         # M-Pesa + Stripe
+│   │   │   └── payments.py         # PayHero payments
 │   │   │
 │   │   ├── models/                 # Database models
 │   │   │   ├── __init__.py
@@ -124,8 +124,7 @@ convyr/
 │   │   ├── services/               # Business logic
 │   │   │   ├── __init__.py
 │   │   │   ├── whatsapp.py         # WhatsApp API calls
-│   │   │   ├── mpesa.py            # M-Pesa Daraja API
-│   │   │   ├── stripe.py           # Stripe payments
+│   │   │   ├── payhero.py          # PayHero API (M-Pesa STK Push)
 │   │   │   ├── automation.py       # Auto-reply engine
 │   │   │   └── email.py            # Email notifications
 │   │   │
@@ -249,8 +248,7 @@ convyr/
 - [ ] Auto-reply logic implemented
 - [ ] Database models defined
 - [ ] Celery worker configured
-- [ ] M-Pesa Daraja API integrated
-- [ ] Stripe integration added
+- [ ] PayHero API integrated (M-Pesa STK Push + callbacks)
 - [ ] Authentication system built
 
 ### Frontend
