@@ -3,6 +3,7 @@ from fastapi.responses import PlainTextResponse
 import logging
 
 from app.config import settings
+from app.services.whatsapp import send_whatsapp_message
 
 logger = logging.getLogger(__name__)
 
@@ -25,4 +26,29 @@ async def verify_webhook(
 async def receive_webhook(request: Request):
     payload = await request.json()
     logger.info(f"Webhook received: {payload}")
+
+    try:
+        entry = payload.get("entry", [])[0]
+        changes = entry.get("changes", [])[0]
+        value = changes.get("value", {})
+        messages = value.get("messages", [])
+
+        if not messages:
+            return {"status": "ok"}
+
+        message = messages[0]
+        sender = message.get("from")
+        msg_type = message.get("type")
+
+        if msg_type == "text":
+            text = message["text"]["body"]
+            logger.info(f"Message from {sender}: {text}")
+            await send_whatsapp_message(
+                to=sender,
+                text="👋 Hi! Thanks for reaching out. We'll get back to you shortly."
+            )
+
+    except Exception as e:
+        logger.error(f"Error processing webhook: {str(e)}")
+
     return {"status": "ok"}
