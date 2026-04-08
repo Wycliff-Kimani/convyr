@@ -7,6 +7,7 @@ from supabase import create_client
 from app.config import settings
 from app.services.whatsapp import send_whatsapp_message, send_typing_indicator
 from app.services.redis_client import has_been_greeted, set_greeting_sent
+from app.services.automation import get_matching_automation
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -49,14 +50,14 @@ async def receive_webhook(request: Request):
             text = message["text"]["body"]
             logger.info(f"Message from {sender}: {text}")
 
-            # Upsert contact — create if new, ignore if exists
+            # Upsert contact
             contact_result = supabase.table("contacts").upsert(
                 {"phone_number": sender},
                 on_conflict="phone_number"
             ).execute()
             contact_id = contact_result.data[0]["id"]
 
-            # Save inbound message to database
+            # Save inbound message
             supabase.table("messages").insert({
                 "whatsapp_message_id": msg_id,
                 "contact_id": contact_id,
@@ -66,22 +67,27 @@ async def receive_webhook(request: Request):
                 "status": "received"
             }).execute()
 
-            # Check cooldown — greet once per 8 hours
+            # Check cooldown
             already_greeted = await has_been_greeted(sender)
 
             if not already_greeted:
                 await send_typing_indicator(msg_id)
                 await asyncio.sleep(2)
-                greeting = "👋 Hi! Thanks for reaching out. We'll get back to you shortly."
-                await send_whatsapp_message(to=sender, text=greeting)
+
+                # Check automations first, fall back to default greeting
+                reply = await get_matching_automation(text)
+                if not reply:
+                    reply = "👋 Hi! Thanks for reaching out. We'll get back to you shortly."
+
+                await send_whatsapp_message(to=sender, text=reply)
                 await set_greeting_sent(sender, expiry_seconds=28800)
 
-                # Save outbound greeting to database
+                # Save outbound reply
                 supabase.table("messages").insert({
                     "contact_id": contact_id,
                     "direction": "outbound",
                     "message_type": "text",
-                    "content": greeting,
+                    "content": reply,
                     "status": "sent"
                 }).execute()
             else:
