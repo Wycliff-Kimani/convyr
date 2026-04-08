@@ -27,16 +27,24 @@ class LoginRequest(BaseModel):
 
 @router.post("/auth/register", status_code=201)
 async def register(data: RegisterRequest):
-    existing = supabase.table("users").select("id").eq("email", data.email).execute()
-    if existing.data:
+    # Check if email already exists in users
+    existing_user = supabase.table("users").select("id").eq("email", data.email).execute()
+    if existing_user.data:
         raise HTTPException(status_code=400, detail="Email already registered.")
 
+    # Check if email already exists in businesses
+    existing_business = supabase.table("businesses").select("id").eq("email", data.email).execute()
+    if existing_business.data:
+        raise HTTPException(status_code=400, detail="Email already registered.")
+
+    # Create business
     business = supabase.table("businesses").insert({
         "name": data.business_name,
         "email": data.email,
     }).execute()
     business_id = business.data[0]["id"]
 
+    # Create user
     user = supabase.table("users").insert({
         "business_id": business_id,
         "email": data.email,
