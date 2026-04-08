@@ -18,8 +18,8 @@ app = FastAPI(
     title=settings.APP_NAME,
     description="WhatsApp Business Automation SaaS for African SMEs",
     version="0.1.0",
-    docs_url="/docs" if settings.is_development else None,
-    redoc_url="/redoc" if settings.is_development else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
     lifespan=lifespan,
 )
 
@@ -51,5 +51,5 @@ async def health_check():
 async def root():
     return {
         "message": f"Welcome to the {settings.APP_NAME} API.",
-        "docs": "/docs" if settings.is_development else "Docs disabled in production.",
+        "docs": "/docs",
     }
