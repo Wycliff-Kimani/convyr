@@ -8,6 +8,7 @@ from app.api.auth import router as auth_router
 from app.api.contacts import router as contacts_router
 from app.api.messages import router as messages_router
 from app.api.automations import router as automations_router
+from app.api.payments import router as payments_router
 
 
 @asynccontextmanager
@@ -41,6 +42,7 @@ app.include_router(auth_router, prefix=API_PREFIX, tags=["Auth"])
 app.include_router(contacts_router, prefix=API_PREFIX, tags=["Contacts"])
 app.include_router(messages_router, prefix=API_PREFIX, tags=["Messages"])
 app.include_router(automations_router, prefix=API_PREFIX, tags=["Automations"])
+app.include_router(payments_router, prefix=API_PREFIX, tags=["Payments"])
 
 
 @app.get("/health", tags=["Health"])
