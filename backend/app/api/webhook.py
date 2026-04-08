@@ -80,7 +80,7 @@ async def receive_webhook(request: Request):
                     reply = "👋 Hi! Thanks for reaching out. We'll get back to you shortly."
 
                 await send_whatsapp_message(to=sender, text=reply)
-                await set_greeting_sent(sender, expiry_seconds=28800)
+                await set_greeting_sent(sender, expiry_seconds=20)
 
                 # Save outbound reply
                 supabase.table("messages").insert({
