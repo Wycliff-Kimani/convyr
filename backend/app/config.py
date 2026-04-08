@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     # ========================
     # Redis (Upstash)
     # ========================
-    REDIS_URL: str = ""
-    REDIS_TOKEN: str = ""
+    UPSTASH_REDIS_REST_URL: str
+    UPSTASH_REDIS_REST_TOKEN: str
 
     # ========================
     # PayHero

@@ -4,7 +4,8 @@ import logging
 import asyncio
 
 from app.config import settings
-from app.services.whatsapp import send_whatsapp_message, mark_message_as_read
+from app.services.whatsapp import send_whatsapp_message, send_typing_indicator
+from app.services.redis_client import has_been_greeted, set_greeting_sent
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +46,23 @@ async def receive_webhook(request: Request):
         if msg_type == "text":
             text = message["text"]["body"]
             logger.info(f"Message from {sender}: {text}")
-            await mark_message_as_read(msg_id)
-            await asyncio.sleep(1.5)
-            await send_whatsapp_message(
-                to=sender,
-                text="👋 Hi! Thanks for reaching out. We'll get back to you shortly."
-            )
+
+            # Check if we've already greeted this customer in the last 24 hours
+            already_greeted = await has_been_greeted(sender)
+
+            if not already_greeted:
+                # First message in 24 hours — send greeting with typing indicator
+                await send_typing_indicator(msg_id)
+                await asyncio.sleep(2)  # Show typing dots for 2 seconds
+                await send_whatsapp_message(
+                    to=sender,
+                    text="👋 Hi! Thanks for reaching out. We'll get back to you shortly."
+                )
+                # Mark this customer as greeted (expires in 24 hours)
+                await set_greeting_sent(sender, expiry_seconds=86400)
+            else:
+                # Already greeted — silently save message (no reply)
+                logger.info(f"Customer {sender} already greeted. Message saved silently.")
 
     except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
