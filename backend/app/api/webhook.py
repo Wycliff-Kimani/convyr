@@ -6,7 +6,6 @@ from supabase import create_client
 
 from app.config import settings
 from app.services.whatsapp import send_whatsapp_message, send_typing_indicator
-from app.services.redis_client import has_been_greeted, set_greeting_sent
 from app.services.automation import get_matching_automation
 
 logger = logging.getLogger(__name__)
@@ -67,31 +66,26 @@ async def receive_webhook(request: Request):
                 "status": "received"
             }).execute()
 
-            # Check cooldown
-            already_greeted = await has_been_greeted(sender)
+            # Show typing indicator
+            await send_typing_indicator(msg_id)
+            await asyncio.sleep(1)
 
-            if not already_greeted:
-                await send_typing_indicator(msg_id)
-                await asyncio.sleep(2)
+            # Check automations
+            reply = await get_matching_automation(text)
+            if not reply:
+                reply = "Thanks for reaching out! Our team will get back to you shortly. 🙏"
 
-                # Check automations first, fall back to default greeting
-                reply = await get_matching_automation(text)
-                if not reply:
-                    reply = "👋 Hi! Thanks for reaching out. We'll get back to you shortly."
+            # Send reply
+            await send_whatsapp_message(to=sender, text=reply)
 
-                await send_whatsapp_message(to=sender, text=reply)
-                await set_greeting_sent(sender, expiry_seconds=20)
-
-                # Save outbound reply
-                supabase.table("messages").insert({
-                    "contact_id": contact_id,
-                    "direction": "outbound",
-                    "message_type": "text",
-                    "content": reply,
-                    "status": "sent"
-                }).execute()
-            else:
-                logger.info(f"Customer {sender} already greeted. Message saved silently.")
+            # Save outbound reply
+            supabase.table("messages").insert({
+                "contact_id": contact_id,
+                "direction": "outbound",
+                "message_type": "text",
+                "content": reply,
+                "status": "sent"
+            }).execute()
 
     except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
