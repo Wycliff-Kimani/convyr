@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.api.webhook import router as webhook_router
 from app.api.auth import router as auth_router
+from app.api.contacts import router as contacts_router
+from app.api.messages import router as messages_router
 
 
 @asynccontextmanager
@@ -35,6 +37,8 @@ API_PREFIX = "/api/v1"
 
 app.include_router(webhook_router, prefix=API_PREFIX, tags=["Webhook"])
 app.include_router(auth_router, prefix=API_PREFIX, tags=["Auth"])
+app.include_router(contacts_router, prefix=API_PREFIX, tags=["Contacts"])
+app.include_router(messages_router, prefix=API_PREFIX, tags=["Messages"])
 
 
 @app.get("/health", tags=["Health"])
