@@ -23,7 +23,7 @@ export default function HeroSection() {
             priority
           />
         </Link>
-        
+
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-500">
           <Link
@@ -61,7 +61,7 @@ export default function HeroSection() {
         </div>
 
         {/* Mobile Hamburger Toggle */}
-        <button 
+        <button
           className="md:hidden p-2 text-gray-600 hover:bg-gray-50 rounded-md"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
@@ -72,12 +72,42 @@ export default function HeroSection() {
       {/* Mobile Menu Dropdown */}
       {isMenuOpen && (
         <div className="md:hidden fixed top-16 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-xl flex flex-col px-4 py-6 gap-6 h-[calc(100vh-64px)] overflow-y-auto">
-          <Link href="/pricing" onClick={() => setIsMenuOpen(false)} className="text-base font-medium text-gray-700">Pricing</Link>
-          <Link href="/about" onClick={() => setIsMenuOpen(false)} className="text-base font-medium text-gray-700">About</Link>
-          <Link href="/contact" onClick={() => setIsMenuOpen(false)} className="text-base font-medium text-gray-700">Contact</Link>
+          <Link
+            href="/pricing"
+            onClick={() => setIsMenuOpen(false)}
+            className="text-base font-medium text-gray-700"
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/about"
+            onClick={() => setIsMenuOpen(false)}
+            className="text-base font-medium text-gray-700"
+          >
+            About
+          </Link>
+          <Link
+            href="/contact"
+            onClick={() => setIsMenuOpen(false)}
+            className="text-base font-medium text-gray-700"
+          >
+            Contact
+          </Link>
           <hr className="border-gray-100" />
-          <Link href="/login" onClick={() => setIsMenuOpen(false)} className="text-base font-medium text-gray-700">Log in</Link>
-          <Link href="/register" onClick={() => setIsMenuOpen(false)} className="text-center w-full bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-3 rounded-lg transition-colors font-medium">Get Started for Free</Link>
+          <Link
+            href="/login"
+            onClick={() => setIsMenuOpen(false)}
+            className="text-base font-medium text-gray-700"
+          >
+            Log in
+          </Link>
+          <Link
+            href="/register"
+            onClick={() => setIsMenuOpen(false)}
+            className="text-center w-full bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-3 rounded-lg transition-colors font-medium"
+          >
+            Get Started for Free
+          </Link>
         </div>
       )}
 
@@ -90,7 +120,9 @@ export default function HeroSection() {
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-[#0F172A] max-w-3xl leading-[1.15] mb-5 sm:mb-6 tracking-tight px-2">
           Automate Your WhatsApp.
           <br className="hidden sm:block" />
-          <span className="text-[#25D366] block sm:inline mt-1 sm:mt-0">Grow Your Business.</span>
+          <span className="text-[#25D366] block sm:inline mt-1 sm:mt-0">
+            Grow Your Business.
+          </span>
         </h1>
         <p className="text-sm sm:text-base text-gray-500 max-w-lg mb-8 sm:mb-10 leading-relaxed px-4">
           Stop losing customers to slow replies. Set up in 5 minutes and let

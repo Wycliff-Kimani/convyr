@@ -41,11 +41,11 @@ export default function DashboardLayout({
     <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden relative">
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden transition-opacity"
           onClick={() => setIsMobileMenuOpen(false)}
         >
-          <div 
+          <div
             className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-200 ease-in-out flex flex-col h-full"
             onClick={(e) => e.stopPropagation()}
           >

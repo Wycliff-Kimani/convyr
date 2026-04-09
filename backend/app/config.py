@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     # ========================
     # CORS
     # ========================
-    ALLOWED_ORIGINS: str = "http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,https://convyr.vercel.app"
 
     @property
     def allowed_origins_list(self) -> List[str]:

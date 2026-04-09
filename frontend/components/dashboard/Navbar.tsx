@@ -13,7 +13,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
 
   return (
     <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 sm:px-6">
-      <button 
+      <button
         onClick={onMenuClick}
         className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
         aria-label="Open menu"
