@@ -39,7 +39,9 @@ async def initiate_stk_push(phone_number: str, amount: int, external_reference: 
             json=payload,
             timeout=30.0
         )
-        response.raise_for_status()
+        if not response.is_success:
+            logger.error(f"PayHero error response: {response.status_code} - {response.text}")
+            response.raise_for_status()
         return response.json()
 
 
@@ -55,5 +57,7 @@ async def check_payment_status(external_reference: str) -> dict:
             params={"external_reference": external_reference},
             timeout=30.0
         )
-        response.raise_for_status()
+        if not response.is_success:
+            logger.error(f"PayHero error response: {response.status_code} - {response.text}")
+            response.raise_for_status()
         return response.json()
