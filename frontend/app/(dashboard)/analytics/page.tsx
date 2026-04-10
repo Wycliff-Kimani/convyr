@@ -30,7 +30,6 @@ export default function AnalyticsPage() {
       ? Math.round((outbound.length / inbound.length) * 100)
       : 0;
 
-  // Group messages by date
   const byDate = new Map<string, { inbound: number; outbound: number }>();
   messages.forEach((msg) => {
     const date = formatDate(msg.created_at);
@@ -39,6 +38,10 @@ export default function AnalyticsPage() {
   });
 
   const dateEntries = Array.from(byDate.entries()).slice(-7);
+  const maxCount = Math.max(
+    ...Array.from(byDate.values()).map((v) => v.inbound + v.outbound),
+    1,
+  );
 
   const stats = [
     {
@@ -70,34 +73,38 @@ export default function AnalyticsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#0F172A]">Analytics</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
+          Analytics
+        </h1>
         <p className="text-sm text-gray-400 mt-1">
           Track your WhatsApp automation performance.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4"
+            className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 flex items-center gap-3 sm:gap-4"
           >
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.color}`}
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${stat.color}`}
             >
-              <stat.icon size={18} />
+              <stat.icon size={16} />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-[#0F172A]">
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold text-[#0F172A]">
                 {loading ? "..." : stat.value}
               </p>
-              <p className="text-xs text-gray-400 mt-0.5">{stat.label}</p>
+              <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 leading-tight">
+                {stat.label}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
         <h2 className="text-base font-semibold text-[#0F172A] mb-6">
           Messages — Last 7 Days
         </h2>
@@ -108,36 +115,44 @@ export default function AnalyticsPage() {
             No message data available yet.
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {dateEntries.map(([date, counts]) => (
-              <div key={date} className="flex items-center gap-4">
-                <p className="text-xs text-gray-400 w-28 shrink-0">{date}</p>
+              <div key={date} className="flex items-center gap-3">
+                <p className="text-xs text-gray-400 w-24 shrink-0">{date}</p>
                 <div className="flex-1 flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <div
                       className="h-2 rounded-full bg-blue-200"
-                      style={{
-                        width: `${Math.min((counts.inbound / Math.max(...Array.from(byDate.values()).map((v) => v.inbound + v.outbound))) * 100, 100)}%`,
-                      }}
+                      style={{ width: `${(counts.inbound / maxCount) * 100}%` }}
                     />
-                    <span className="text-xs text-gray-400">
-                      {counts.inbound} received
+                    <span className="text-xs text-gray-400 shrink-0">
+                      {counts.inbound}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div
                       className="h-2 rounded-full bg-[#25D366]"
                       style={{
-                        width: `${Math.min((counts.outbound / Math.max(...Array.from(byDate.values()).map((v) => v.inbound + v.outbound))) * 100, 100)}%`,
+                        width: `${(counts.outbound / maxCount) * 100}%`,
                       }}
                     />
-                    <span className="text-xs text-gray-400">
-                      {counts.outbound} sent
+                    <span className="text-xs text-gray-400 shrink-0">
+                      {counts.outbound}
                     </span>
                   </div>
                 </div>
               </div>
             ))}
+            <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-2 rounded-full bg-blue-200" />
+                <span className="text-xs text-gray-400">Received</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-2 rounded-full bg-[#25D366]" />
+                <span className="text-xs text-gray-400">Sent</span>
+              </div>
+            </div>
           </div>
         )}
       </div>

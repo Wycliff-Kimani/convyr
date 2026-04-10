@@ -144,30 +144,28 @@ export default function HeroSection() {
         </div>
 
         {/* Stats */}
-        <div className="flex flex-col sm:flex-row items-center gap-8 sm:gap-10 mt-16 sm:mt-20 text-center w-full max-w-lg mx-auto">
-          <div className="w-full sm:w-auto">
-            <p className="text-3xl font-bold text-[#0F172A] tracking-tight">
+        <div className="flex flex-row items-center justify-center gap-0 mt-16 sm:mt-20 w-full max-w-xl mx-auto bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="flex-1 flex flex-col items-center justify-center py-5 px-4 border-r border-gray-100">
+            <p className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">
               5 min
             </p>
-            <p className="text-[10px] sm:text-xs text-gray-400 mt-1 uppercase tracking-wide">
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-1 uppercase tracking-wide text-center">
               Setup time
             </p>
           </div>
-          <div className="w-16 h-px sm:w-px sm:h-8 bg-gray-200 my-2 sm:my-0"></div>
-          <div className="w-full sm:w-auto">
-            <p className="text-3xl font-bold text-[#0F172A] tracking-tight">
+          <div className="flex-1 flex flex-col items-center justify-center py-5 px-4 border-r border-gray-100">
+            <p className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">
               24/7
             </p>
-            <p className="text-[10px] sm:text-xs text-gray-400 mt-1 uppercase tracking-wide">
-              Automated replies
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-1 uppercase tracking-wide text-center">
+              Auto replies
             </p>
           </div>
-          <div className="w-16 h-px sm:w-px sm:h-8 bg-gray-200 my-2 sm:my-0"></div>
-          <div className="w-full sm:w-auto">
-            <p className="text-3xl font-bold text-[#0F172A] tracking-tight">
+          <div className="flex-1 flex flex-col items-center justify-center py-5 px-4">
+            <p className="text-2xl sm:text-3xl font-bold text-[#25D366] tracking-tight">
               M-Pesa
             </p>
-            <p className="text-[10px] sm:text-xs text-gray-400 mt-1 uppercase tracking-wide">
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-1 uppercase tracking-wide text-center">
               Ready out of the box
             </p>
           </div>

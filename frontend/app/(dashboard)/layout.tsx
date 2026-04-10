@@ -55,14 +55,16 @@ export default function DashboardLayout({
       )}
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:block h-full z-10 w-60 flex-shrink-0">
+      <div className="hidden md:block h-full z-10 w-60 shrink-0">
         <Sidebar />
       </div>
 
       {/* Main Content Area */}
       <div className="flex flex-col flex-1 w-full overflow-hidden">
         <Navbar onMenuClick={() => setIsMobileMenuOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 md:pb-6">
+          {children}
+        </main>{" "}
       </div>
     </div>
   );

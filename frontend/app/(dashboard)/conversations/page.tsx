@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, Message } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
-import { Send } from "lucide-react";
+import { Send, ArrowLeft } from "lucide-react";
 
 export default function ConversationsPage() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,7 +26,6 @@ export default function ConversationsPage() {
     fetchMessages();
   }, []);
 
-  // Group messages by contact phone number
   const contactMap = new Map<string, Message[]>();
   messages.forEach((msg) => {
     const phone = msg.contacts?.phone_number;
@@ -56,9 +55,11 @@ export default function ConversationsPage() {
   };
 
   return (
-    <div className="flex h-full gap-4 -m-6">
-      {/* Contact List */}
-      <div className="w-72 bg-white border-r border-gray-100 flex flex-col h-full overflow-hidden">
+    <div className="flex h-[calc(100vh-64px-56px)] md:h-[calc(100vh-64px)] gap-4 -m-4 sm:-m-6">
+      {/* Contact List — hidden on mobile when a contact is selected */}
+      <div
+        className={`${selectedContact ? "hidden md:flex" : "flex"} w-full md:w-72 bg-white border-r border-gray-100 flex-col h-full overflow-hidden`}
+      >
         <div className="px-4 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-[#0F172A]">
             Conversations
@@ -105,30 +106,40 @@ export default function ConversationsPage() {
         </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      {/* Chat Area — full screen on mobile when contact selected */}
+      <div
+        className={`${selectedContact ? "flex" : "hidden md:flex"} flex-1 flex-col bg-white md:rounded-2xl border border-gray-100 overflow-hidden`}
+      >
         {!selectedContact ? (
           <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
             Select a conversation to view messages
           </div>
         ) : (
           <>
-            <div className="px-6 py-4 border-b border-gray-100">
-              <p className="text-sm font-semibold text-[#0F172A]">
-                {selectedContact}
-              </p>
-              <p className="text-xs text-gray-400">
-                {selectedMessages.length} messages
-              </p>
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+              <button
+                onClick={() => setSelectedContact(null)}
+                className="md:hidden p-1 text-gray-400 hover:text-gray-600"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <div>
+                <p className="text-sm font-semibold text-[#0F172A]">
+                  {selectedContact}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {selectedMessages.length} messages
+                </p>
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-3">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-3">
               {selectedMessages.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-sm px-4 py-2.5 rounded-2xl text-sm ${
+                    className={`max-w-[80%] sm:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${
                       msg.direction === "outbound"
                         ? "bg-[#25D366] text-white rounded-br-sm"
                         : "bg-gray-100 text-[#0F172A] rounded-bl-sm"
@@ -144,7 +155,7 @@ export default function ConversationsPage() {
                 </div>
               ))}
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center gap-3">
               <input
                 type="text"
                 placeholder="Type a reply..."
@@ -156,7 +167,7 @@ export default function ConversationsPage() {
               <button
                 onClick={handleSend}
                 disabled={sending || !replyText.trim()}
-                className="bg-[#25D366] hover:bg-[#128C7E] disabled:opacity-50 text-white p-2.5 rounded-lg transition-colors"
+                className="bg-[#25D366] hover:bg-[#128C7E] disabled:opacity-50 text-white p-2.5 rounded-lg transition-colors shrink-0"
               >
                 <Send size={16} />
               </button>

@@ -27,7 +27,6 @@ export default function OverviewPage() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -67,72 +66,70 @@ export default function OverviewPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-6 sm:gap-8">
-      {/* Header */}
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
           Good morning, {user?.full_name?.split(" ")[0]} 👋
         </h1>
-        <p className="text-xs sm:text-sm text-gray-400 mt-1">
+        <p className="text-sm text-gray-400 mt-1">
           Here's what's happening with your WhatsApp automation today.
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4"
+            className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 flex items-center gap-3 sm:gap-4"
           >
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.color}`}
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${stat.color}`}
             >
-              <stat.icon size={18} />
+              <stat.icon size={16} />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-[#0F172A]">{stat.value}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{stat.label}</p>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold text-[#0F172A]">
+                {stat.value}
+              </p>
+              <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 leading-tight">
+                {stat.label}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Recent Messages */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
         <h2 className="text-base font-semibold text-[#0F172A] mb-4">
           Recent Messages
         </h2>
         {loading ? (
           <p className="text-sm text-gray-400">Loading messages...</p>
         ) : recentMessages.length === 0 ? (
-          <p className="text-sm text-gray-400">
-            No messages yet. They'll appear here once customers start messaging
-            you.
-          </p>
+          <p className="text-sm text-gray-400">No messages yet.</p>
         ) : (
           <div className="flex flex-col gap-3">
             {recentMessages.map((message) => (
               <div
                 key={message.id}
-                className="flex items-start justify-between gap-4 py-3 border-b border-gray-50 last:border-0"
+                className="flex items-start justify-between gap-2 py-3 border-b border-gray-50 last:border-0"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2 sm:gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-500 shrink-0">
                     {message.contacts?.phone_number?.slice(-2)}
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-[#0F172A]">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[#0F172A] truncate">
                       {message.contacts?.name || message.contacts?.phone_number}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5 max-w-sm truncate">
+                    <p className="text-xs text-gray-400 mt-0.5 truncate max-w-37.5 sm:max-w-sm">
                       {message.content}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
+                    className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
                       message.direction === "inbound"
                         ? "bg-blue-50 text-blue-500"
                         : "bg-green-50 text-[#25D366]"
@@ -140,7 +137,7 @@ export default function OverviewPage() {
                   >
                     {message.direction === "inbound" ? "Received" : "Sent"}
                   </span>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-[10px] text-gray-400">
                     {formatDateTime(message.created_at)}
                   </p>
                 </div>

@@ -35,14 +35,15 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold text-[#0F172A]">Settings</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
+          Settings
+        </h1>
         <p className="text-sm text-gray-400 mt-1">
           Manage your account and subscription.
         </p>
       </div>
 
-      {/* Account Info */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col gap-4">
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 flex flex-col gap-4">
         <div className="flex items-center gap-2 mb-2">
           <User size={16} className="text-gray-400" />
           <h2 className="text-base font-semibold text-[#0F172A]">Account</h2>
@@ -65,8 +66,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Subscription */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col gap-4">
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 flex flex-col gap-4">
         <div className="flex items-center gap-2 mb-2">
           <CreditCard size={16} className="text-gray-400" />
           <h2 className="text-base font-semibold text-[#0F172A]">
@@ -92,7 +92,7 @@ export default function SettingsPage() {
               M-Pesa Phone Number
             </label>
             <input
-              type="text"
+              type="tel"
               placeholder="e.g. 0793790005"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -120,8 +120,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Logout */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
         <button
           onClick={() => auth.logout()}
           className="flex items-center gap-2 text-sm text-red-500 hover:text-red-600 transition-colors font-medium"

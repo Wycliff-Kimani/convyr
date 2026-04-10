@@ -78,27 +78,28 @@ export default function AutomationsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#0F172A]">Automations</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
+            Automations
+          </h1>
           <p className="text-sm text-gray-400 mt-1">
             Manage your auto-reply rules.
           </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           <Plus size={16} />
-          New Rule
+          <span className="hidden sm:inline">New Rule</span>
         </button>
       </div>
 
-      {/* Create Form */}
       {showForm && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 flex flex-col gap-4">
           <h2 className="text-base font-semibold text-[#0F172A]">
             New Automation Rule
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-[#0F172A]">
                 Rule Name
@@ -147,7 +148,7 @@ export default function AutomationsPage() {
                 />
               </div>
             )}
-            <div className="flex flex-col gap-1.5 md:col-span-2">
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
               <label className="text-sm font-medium text-[#0F172A]">
                 Response
               </label>
@@ -178,9 +179,8 @@ export default function AutomationsPage() {
         </div>
       )}
 
-      {/* Automations List */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center gap-2">
           <Zap size={16} className="text-gray-400" />
           <span className="text-sm font-medium text-[#0F172A]">
             {loading ? "Loading..." : `${automations.length} rules`}
@@ -199,10 +199,10 @@ export default function AutomationsPage() {
             {automations.map((automation) => (
               <div
                 key={automation.id}
-                className="px-6 py-4 flex items-start justify-between gap-4"
+                className="px-4 sm:px-6 py-4 flex items-start justify-between gap-4"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <p className="text-sm font-medium text-[#0F172A]">
                       {automation.name}
                     </p>
