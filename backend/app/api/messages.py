@@ -23,9 +23,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 
 class SendMessageRequest(BaseModel):
-    contact_id: str
-    message: str
-
+    to: str
+    text: str
 
 @router.get("/messages")
 async def get_messages(user=Depends(get_current_user)):
@@ -35,23 +34,20 @@ async def get_messages(user=Depends(get_current_user)):
 
 @router.post("/messages/send")
 async def send_message(data: SendMessageRequest, user=Depends(get_current_user)):
-    # Get contact phone number
-    contact = supabase.table("contacts").select("phone_number").eq("id", data.contact_id).execute()
-    if not contact.data:
-        raise HTTPException(status_code=404, detail="Contact not found.")
-
-    phone_number = contact.data[0]["phone_number"]
-
     # Send via WhatsApp
-    await send_whatsapp_message(to=phone_number, text=data.message)
+    await send_whatsapp_message(to=data.to, text=data.text)
+
+    # Look up contact by phone number to get contact_id
+    contact = supabase.table("contacts").select("id").eq("phone_number", data.to).execute()
+    contact_id = contact.data[0]["id"] if contact.data else None
 
     # Save outbound message to database
     supabase.table("messages").insert({
-        "contact_id": data.contact_id,
+        "contact_id": contact_id,
         "direction": "outbound",
         "message_type": "text",
-        "content": data.message,
+        "content": data.text,
         "status": "sent"
     }).execute()
 
-    return {"status": "sent", "to": phone_number, "message": data.message}
+    return {"status": "sent", "to": data.to, "message": data.text}
