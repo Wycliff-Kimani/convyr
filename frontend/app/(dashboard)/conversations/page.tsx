@@ -11,13 +11,31 @@ export default function ConversationsPage() {
   const [selectedContact, setSelectedContact] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const isAtBottom = () => {
+    const container = chatContainerRef.current;
+    if (!container) return true;
+    return (
+      container.scrollHeight - container.scrollTop - container.clientHeight < 80
+    );
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    bottomRef.current?.scrollIntoView({ behavior });
+  };
+
   const fetchMessages = async (silent = false) => {
+    const wasAtBottom = isAtBottom();
     try {
       if (!silent) setLoading(true);
       const res = await api.getMessages();
       setMessages(res.messages);
+      // After silent poll, only scroll if user was already at bottom
+      if (silent && wasAtBottom) {
+        setTimeout(() => scrollToBottom("smooth"), 50);
+      }
     } catch (err) {
       console.error("Failed to fetch messages:", err);
     } finally {
@@ -38,10 +56,19 @@ export default function ConversationsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-scroll to bottom when messages change
+  // When switching contacts, always jump to bottom instantly
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, selectedContact]);
+    if (selectedContact) {
+      setTimeout(() => scrollToBottom("instant" as ScrollBehavior), 50);
+    }
+  }, [selectedContact]);
+
+  // On first load (non-silent), scroll to bottom
+  useEffect(() => {
+    if (!loading && selectedContact) {
+      setTimeout(() => scrollToBottom("instant" as ScrollBehavior), 50);
+    }
+  }, [loading]);
 
   const contactMap = new Map<string, Message[]>();
   messages.forEach((msg) => {
@@ -63,6 +90,8 @@ export default function ConversationsPage() {
       await api.sendMessage(selectedContact, replyText);
       setReplyText("");
       await fetchMessages(true);
+      // Always scroll to bottom after sending
+      setTimeout(() => scrollToBottom("smooth"), 50);
     } catch (err) {
       console.error("Failed to send message:", err);
     } finally {
@@ -148,7 +177,10 @@ export default function ConversationsPage() {
                 </p>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-3">
+            <div
+              ref={chatContainerRef}
+              className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-3"
+            >
               {selectedMessages.map((msg) => (
                 <div
                   key={msg.id}
