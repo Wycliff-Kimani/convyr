@@ -26,24 +26,29 @@ class SendMessageRequest(BaseModel):
     to: str
     text: str
 
+
 @router.get("/messages")
 async def get_messages(user=Depends(get_current_user)):
-    result = supabase.table("messages").select("*, contacts(phone_number, name)").order("created_at", desc=True).limit(100).execute()
+    business_id = user.get("business_id")
+    result = supabase.table("messages").select("*, contacts(phone_number, name)").eq("business_id", business_id).order("created_at", desc=True).limit(100).execute()
     return {"messages": result.data, "total": len(result.data)}
 
 
 @router.post("/messages/send")
 async def send_message(data: SendMessageRequest, user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+
     # Send via WhatsApp
     await send_whatsapp_message(to=data.to, text=data.text)
 
-    # Look up contact by phone number to get contact_id
-    contact = supabase.table("contacts").select("id").eq("phone_number", data.to).execute()
+    # Look up contact by phone number and business_id
+    contact = supabase.table("contacts").select("id").eq("phone_number", data.to).eq("business_id", business_id).execute()
     contact_id = contact.data[0]["id"] if contact.data else None
 
     # Save outbound message to database
     supabase.table("messages").insert({
         "contact_id": contact_id,
+        "business_id": business_id,
         "direction": "outbound",
         "message_type": "text",
         "content": data.text,

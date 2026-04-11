@@ -49,9 +49,14 @@ async def receive_webhook(request: Request):
             text = message["text"]["body"]
             logger.info(f"Message from {sender}: {text}")
 
-            # Upsert contact
+            # Look up business by phone_number_id from webhook payload
+            phone_number_id = value.get("metadata", {}).get("phone_number_id")
+            business_result = supabase.table("businesses").select("id").eq("whatsapp_phone_number_id", phone_number_id).execute()
+            business_id = business_result.data[0]["id"] if business_result.data else None
+
+            # Upsert contact with business_id
             contact_result = supabase.table("contacts").upsert(
-                {"phone_number": sender},
+                {"phone_number": sender, "business_id": business_id},
                 on_conflict="phone_number"
             ).execute()
             contact_id = contact_result.data[0]["id"]
@@ -60,6 +65,7 @@ async def receive_webhook(request: Request):
             supabase.table("messages").insert({
                 "whatsapp_message_id": msg_id,
                 "contact_id": contact_id,
+                "business_id": business_id,
                 "direction": "inbound",
                 "message_type": "text",
                 "content": text,
@@ -81,6 +87,7 @@ async def receive_webhook(request: Request):
             # Save outbound reply
             supabase.table("messages").insert({
                 "contact_id": contact_id,
+                "business_id": business_id,
                 "direction": "outbound",
                 "message_type": "text",
                 "content": reply,

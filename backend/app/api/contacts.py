@@ -22,13 +22,15 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 @router.get("/contacts")
 async def get_contacts(user=Depends(get_current_user)):
-    result = supabase.table("contacts").select("*").order("created_at", desc=True).execute()
+    business_id = user.get("business_id")
+    result = supabase.table("contacts").select("*").eq("business_id", business_id).order("created_at", desc=True).execute()
     return {"contacts": result.data, "total": len(result.data)}
 
 
 @router.get("/contacts/{contact_id}")
 async def get_contact(contact_id: str, user=Depends(get_current_user)):
-    result = supabase.table("contacts").select("*").eq("id", contact_id).execute()
+    business_id = user.get("business_id")
+    result = supabase.table("contacts").select("*").eq("id", contact_id).eq("business_id", business_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Contact not found.")
     return result.data[0]
@@ -36,5 +38,6 @@ async def get_contact(contact_id: str, user=Depends(get_current_user)):
 
 @router.get("/contacts/{contact_id}/messages")
 async def get_contact_messages(contact_id: str, user=Depends(get_current_user)):
-    result = supabase.table("messages").select("*").eq("contact_id", contact_id).order("created_at", desc=False).execute()
+    business_id = user.get("business_id")
+    result = supabase.table("messages").select("*").eq("contact_id", contact_id).eq("business_id", business_id).order("created_at", desc=False).execute()
     return {"messages": result.data, "total": len(result.data)}
