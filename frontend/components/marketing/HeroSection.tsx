@@ -26,10 +26,7 @@ export default function HeroSection() {
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-500">
-          <Link
-            href="/"
-            className="hover:text-[#075E54] transition-colors"
-          >
+          <Link href="/" className="hover:text-[#075E54] transition-colors">
             Home
           </Link>
           <Link
