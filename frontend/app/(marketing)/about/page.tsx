@@ -15,14 +15,15 @@ export default function AboutPage() {
             Our Story
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-[#0F172A] leading-tight mb-6">
-            Built for Africa.
+            Built for African businesses.
             <br />
-            <span className="text-[#25D366]">Built for You.</span>
+            <span className="text-[#25D366]">Built to save you time.</span>
           </h1>
-          <p className="text-base text-gray-400 max-w-xl mx-auto leading-relaxed">
-            Convyr was born from a simple observation — 90% of Kenyan businesses
-            run their customer service on WhatsApp, manually, one message at a
-            time. We built the tool we wished existed.
+          <p className="text-base text-gray-600 max-w-xl mx-auto leading-relaxed">
+            Every day, thousands of Kenyan businesses handle hundreds of
+            customer messages manually on WhatsApp. Replies are slow,
+            opportunities are lost, and owners waste hours they don't have.
+            Convyr was created to change that.
           </p>
         </div>
       </section>
@@ -34,15 +35,17 @@ export default function AboutPage() {
             <h2 className="text-3xl font-bold text-[#0F172A] mb-4">
               Our Mission
             </h2>
-            <p className="text-gray-500 leading-relaxed mb-4">
-              To give every small business in Africa the same automation tools
-              that large corporations use — without the complexity, without the
-              cost, and without needing a tech team.
+            <p className="text-gray-600 leading-relaxed mb-4">
+              We exist to give every small and growing business in Africa the
+              same powerful WhatsApp automation tools that big companies use —
+              but without the high cost, complexity, or need for technical
+              skills.
             </p>
-            <p className="text-gray-500 leading-relaxed">
-              We believe a mama mboga, a salon owner, or a school admin should
-              be able to automate their WhatsApp in 5 minutes and get back to
-              doing what they do best.
+            <p className="text-gray-600 leading-relaxed">
+              Whether you run a shop, salon, school, clinic, or delivery
+              service, you should be able to set up professional automated
+              replies in under 5 minutes and focus on running your business
+              instead of chasing messages.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -80,10 +83,11 @@ export default function AboutPage() {
             <p className="text-sm text-[#25D366] font-medium mt-1">
               Founder & CEO — DevCraft Technologies
             </p>
-            <p className="text-gray-500 text-sm mt-4 leading-relaxed max-w-lg mx-auto">
-              Software developer based in Kenya. Building tools that solve real
-              African business problems. Convyr is the product I needed before I
-              built it.
+            <p className="text-gray-600 text-sm mt-4 leading-relaxed max-w-lg mx-auto">
+              I'm a software developer based in Kenya. After watching too many
+              local businesses lose customers due to slow WhatsApp replies, I
+              decided to build the exact tool I wished existed — simple,
+              affordable, and built specifically for African businesses.
             </p>
             <div className="flex items-center justify-center gap-4 mt-6">
               <a
@@ -109,10 +113,11 @@ export default function AboutPage() {
       <section className="bg-[#0F172A] py-20 px-6 text-center">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold text-white mb-4">
-            Ready to automate your WhatsApp?
+            Ready to stop losing customers to slow replies?
           </h2>
           <p className="text-gray-400 mb-8">
-            Set up in 5 minutes. No tech skills needed.
+            Set up automated WhatsApp in 5 minutes. No technical skills
+            required.
           </p>
           <Link
             href="/register"
