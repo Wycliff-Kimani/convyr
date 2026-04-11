@@ -88,9 +88,9 @@ export default function AboutPage() {
               cost, and without needing a tech team.
             </p>
             <p className="text-gray-500 leading-relaxed">
-              We believe a mama mboga, a salon owner, or a school admin should
-              be able to automate their WhatsApp in 5 minutes and get back to
-              doing what they do best.
+              We believe a shoe shop, a salon owner, or a school admin should be
+              able to automate their WhatsApp in 5 minutes and get back to doing
+              what they do best.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -127,7 +127,7 @@ export default function AboutPage() {
             <h3 className="text-xl font-bold text-[#0F172A]">Wycliff Kimani</h3>
             <p className="text-sm text-[#25D366] font-medium mt-1">
               Founder & CEO — DevCraft Technologies
-            </p>
+            </p> 
             <p className="text-gray-500 text-sm mt-4 leading-relaxed max-w-lg mx-auto">
               Software developer based in Kenya. Building tools that solve real
               African business problems. Convyr is the product I needed before I

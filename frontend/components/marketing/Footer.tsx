@@ -6,15 +6,17 @@ export default function Footer() {
     <footer className="bg-[#0F172A] text-gray-400 py-12 px-6">
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-start justify-between gap-10">
         <div className="flex flex-col gap-3">
-          <Image
-            src="/images/logo-dark.png"
-            alt="Convyr"
-            width={120}
-            height={40}
-            style={{ width: "auto", height: "36px" }}
-            className="object-contain"
-          />
-          <p className="text-sm max-w-xs">
+          <Link href="/">
+            <Image
+              src="/images/logo-light.svg"
+              alt="Convyr"
+              width={160}
+              height={60}
+              style={{ width: "auto", height: "48px" }}
+              className="object-contain"
+            />
+          </Link>
+          <p className="text-sm max-w-xs mt-2">
             WhatsApp Business Automation for African SMEs. Simple, affordable,
             powerful.
           </p>

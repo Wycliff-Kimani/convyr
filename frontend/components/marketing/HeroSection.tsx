@@ -27,6 +27,12 @@ export default function HeroSection() {
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-500">
           <Link
+            href="/"
+            className="hover:text-[#075E54] transition-colors"
+          >
+            Home
+          </Link>
+          <Link
             href="/pricing"
             className="hover:text-[#075E54] transition-colors"
           >
@@ -72,6 +78,13 @@ export default function HeroSection() {
       {/* Mobile Menu Dropdown */}
       {isMenuOpen && (
         <div className="md:hidden fixed top-16 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-xl flex flex-col px-4 py-6 gap-6 h-[calc(100vh-64px)] overflow-y-auto">
+          <Link
+            href="/"
+            onClick={() => setIsMenuOpen(false)}
+            className="text-base font-medium text-gray-700"
+          >
+            Home
+          </Link>
           <Link
             href="/pricing"
             onClick={() => setIsMenuOpen(false)}
