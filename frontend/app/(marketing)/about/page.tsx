@@ -1,59 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import Footer from "@/components/marketing/Footer";
-import HeroSection from "@/components/marketing/HeroSection";
+import MarketingNavbar from "@/components/marketing/MarketingNavbar";
 
 export default function AboutPage() {
   return (
     <main>
-      {/* Navbar — reuse from HeroSection but we need just the nav */}
-      <nav className="sticky top-0 z-50 flex items-center justify-between px-8 h-[64px] border-b border-gray-100 bg-white">
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/images/logo-light.png"
-            alt="Convyr"
-            width={240}
-            height={80}
-            style={{ width: "auto", height: "36px" }}
-            className="object-contain"
-            priority
-          />
-        </Link>
-        <div className="hidden md:flex items-center gap-8 text-sm text-gray-500">
-          <Link
-            href="/pricing"
-            className="hover:text-[#075E54] transition-colors"
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/about"
-            className="hover:text-[#075E54] transition-colors"
-          >
-            About
-          </Link>
-          <Link
-            href="/contact"
-            className="hover:text-[#075E54] transition-colors"
-          >
-            Contact
-          </Link>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/login"
-            className="text-sm text-gray-500 hover:text-[#075E54] transition-colors"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/register"
-            className="text-sm bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-2 rounded-lg transition-colors font-medium"
-          >
-            Get Started
-          </Link>
-        </div>
-      </nav>
+      <MarketingNavbar />
 
       {/* Hero */}
       <section className="bg-white py-20 px-6 text-center">
@@ -88,9 +40,9 @@ export default function AboutPage() {
               cost, and without needing a tech team.
             </p>
             <p className="text-gray-500 leading-relaxed">
-              We believe a shoe shop, a salon owner, or a school admin should be
-              able to automate their WhatsApp in 5 minutes and get back to doing
-              what they do best.
+              We believe a mama mboga, a salon owner, or a school admin should
+              be able to automate their WhatsApp in 5 minutes and get back to
+              doing what they do best.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -127,7 +79,7 @@ export default function AboutPage() {
             <h3 className="text-xl font-bold text-[#0F172A]">Wycliff Kimani</h3>
             <p className="text-sm text-[#25D366] font-medium mt-1">
               Founder & CEO — DevCraft Technologies
-            </p> 
+            </p>
             <p className="text-gray-500 text-sm mt-4 leading-relaxed max-w-lg mx-auto">
               Software developer based in Kenya. Building tools that solve real
               African business problems. Convyr is the product I needed before I
@@ -140,7 +92,7 @@ export default function AboutPage() {
                 rel="noopener noreferrer"
                 className="text-sm text-[#25D366] hover:underline font-medium"
               >
-                LinkedIn →
+                LinkedIn &rarr;
               </a>
               <a
                 href="mailto:wycliffkimani9@gmail.com"

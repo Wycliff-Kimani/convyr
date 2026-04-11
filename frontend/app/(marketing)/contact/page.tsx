@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import Footer from "@/components/marketing/Footer";
+import MarketingNavbar from "@/components/marketing/MarketingNavbar";
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
@@ -11,60 +11,13 @@ export default function ContactPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // For now — opens email client with pre-filled message
     window.location.href = `mailto:wycliffkimani9@gmail.com?subject=Convyr Enquiry from ${form.name}&body=${encodeURIComponent(form.message)}%0A%0AFrom: ${form.name} (${form.email})`;
     setSubmitted(true);
   };
 
   return (
     <main>
-      <nav className="sticky top-0 z-50 flex items-center justify-between px-8 h-[64px] border-b border-gray-100 bg-white">
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/images/logo-light.png"
-            alt="Convyr"
-            width={240}
-            height={80}
-            style={{ width: "auto", height: "36px" }}
-            className="object-contain"
-            priority
-          />
-        </Link>
-        <div className="hidden md:flex items-center gap-8 text-sm text-gray-500">
-          <Link
-            href="/pricing"
-            className="hover:text-[#075E54] transition-colors"
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/about"
-            className="hover:text-[#075E54] transition-colors"
-          >
-            About
-          </Link>
-          <Link
-            href="/contact"
-            className="hover:text-[#075E54] transition-colors"
-          >
-            Contact
-          </Link>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/login"
-            className="text-sm text-gray-500 hover:text-[#075E54] transition-colors"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/register"
-            className="text-sm bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-2 rounded-lg transition-colors font-medium"
-          >
-            Get Started
-          </Link>
-        </div>
-      </nav>
+      <MarketingNavbar />
 
       <section className="bg-white py-20 px-6">
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-start">

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import Footer from "@/components/marketing/Footer";
 import PricingCard from "@/components/marketing/PricingCard";
+import MarketingNavbar from "@/components/marketing/MarketingNavbar";
 
 const basicFeatures = [
   "Up to 500 automated replies/month",
@@ -47,53 +47,7 @@ const faqs = [
 export default function PricingPage() {
   return (
     <main>
-      <nav className="sticky top-0 z-50 flex items-center justify-between px-8 h-[64px] border-b border-gray-100 bg-white">
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/images/logo-light.png"
-            alt="Convyr"
-            width={240}
-            height={80}
-            style={{ width: "auto", height: "36px" }}
-            className="object-contain"
-            priority
-          />
-        </Link>
-        <div className="hidden md:flex items-center gap-8 text-sm text-gray-500">
-          <Link
-            href="/pricing"
-            className="hover:text-[#075E54] transition-colors"
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/about"
-            className="hover:text-[#075E54] transition-colors"
-          >
-            About
-          </Link>
-          <Link
-            href="/contact"
-            className="hover:text-[#075E54] transition-colors"
-          >
-            Contact
-          </Link>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/login"
-            className="text-sm text-gray-500 hover:text-[#075E54] transition-colors"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/register"
-            className="text-sm bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-2 rounded-lg transition-colors font-medium"
-          >
-            Get Started
-          </Link>
-        </div>
-      </nav>
+      <MarketingNavbar />
 
       {/* Header */}
       <section className="bg-white py-20 px-6 text-center">
@@ -127,7 +81,7 @@ export default function PricingPage() {
         <p className="text-center text-sm text-gray-400 mt-8">
           Need something custom?{" "}
           <Link href="/contact" className="text-[#25D366] hover:underline">
-            Contact us for Enterprise pricing →
+            Contact us for Enterprise pricing &rarr;
           </Link>
         </p>
       </section>
