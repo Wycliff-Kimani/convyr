@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, Message } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import { Send, ArrowLeft } from "lucide-react";
@@ -11,20 +11,37 @@ export default function ConversationsPage() {
   const [selectedContact, setSelectedContact] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
+  const fetchMessages = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const res = await api.getMessages();
+      setMessages(res.messages);
+    } catch (err) {
+      console.error("Failed to fetch messages:", err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  // Initial fetch
   useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const res = await api.getMessages();
-        setMessages(res.messages);
-      } catch (err) {
-        console.error("Failed to fetch messages:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchMessages();
   }, []);
+
+  // Poll every 5 seconds silently
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchMessages(true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, selectedContact]);
 
   const contactMap = new Map<string, Message[]>();
   messages.forEach((msg) => {
@@ -45,8 +62,7 @@ export default function ConversationsPage() {
     try {
       await api.sendMessage(selectedContact, replyText);
       setReplyText("");
-      const res = await api.getMessages();
-      setMessages(res.messages);
+      await fetchMessages(true);
     } catch (err) {
       console.error("Failed to send message:", err);
     } finally {
@@ -154,6 +170,7 @@ export default function ConversationsPage() {
                   </div>
                 </div>
               ))}
+              <div ref={bottomRef} />
             </div>
             <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center gap-3">
               <input
