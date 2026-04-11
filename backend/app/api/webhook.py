@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, Query, HTTPException
 from fastapi.responses import PlainTextResponse
 import logging
 import asyncio
+from datetime import datetime, timezone, timedelta
 from supabase import create_client
 
 from app.config import settings
@@ -12,6 +13,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+
+COOLDOWN_HOURS = 4
 
 
 @router.get("/webhook", response_class=PlainTextResponse)
@@ -59,7 +62,8 @@ async def receive_webhook(request: Request):
                 {"phone_number": sender, "business_id": business_id},
                 on_conflict="phone_number"
             ).execute()
-            contact_id = contact_result.data[0]["id"]
+            contact = contact_result.data[0]
+            contact_id = contact["id"]
 
             # Save inbound message
             supabase.table("messages").insert({
@@ -72,27 +76,44 @@ async def receive_webhook(request: Request):
                 "status": "received"
             }).execute()
 
-            # Show typing indicator
-            await send_typing_indicator(msg_id)
-            await asyncio.sleep(1)
+            # Check cooldown — has the bot replied to this contact in the last 4 hours?
+            last_replied = contact.get("last_auto_replied_at")
+            cooldown_passed = True
 
-            # Check automations
-            reply = await get_matching_automation(text)
-            if not reply:
-                reply = "Thanks for reaching out! Our team will get back to you shortly. 🙏"
+            if last_replied:
+                last_replied_dt = datetime.fromisoformat(last_replied.replace("Z", "+00:00"))
+                time_since = datetime.now(timezone.utc) - last_replied_dt
+                if time_since < timedelta(hours=COOLDOWN_HOURS):
+                    cooldown_passed = False
+                    logger.info(f"Cooldown active for {sender} — skipping auto-reply ({time_since} since last reply)")
 
-            # Send reply
-            await send_whatsapp_message(to=sender, text=reply)
+            if cooldown_passed:
+                # Show typing indicator
+                await send_typing_indicator(msg_id)
+                await asyncio.sleep(1)
 
-            # Save outbound reply
-            supabase.table("messages").insert({
-                "contact_id": contact_id,
-                "business_id": business_id,
-                "direction": "outbound",
-                "message_type": "text",
-                "content": reply,
-                "status": "sent"
-            }).execute()
+                # Check automations
+                reply = await get_matching_automation(text)
+                if not reply:
+                    reply = "Thanks for reaching out! Our team will get back to you shortly. 🙏"
+
+                # Send reply
+                await send_whatsapp_message(to=sender, text=reply)
+
+                # Save outbound reply
+                supabase.table("messages").insert({
+                    "contact_id": contact_id,
+                    "business_id": business_id,
+                    "direction": "outbound",
+                    "message_type": "text",
+                    "content": reply,
+                    "status": "sent"
+                }).execute()
+
+                # Update last_auto_replied_at on the contact
+                supabase.table("contacts").update({
+                    "last_auto_replied_at": datetime.now(timezone.utc).isoformat()
+                }).eq("id", contact_id).execute()
 
     except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
