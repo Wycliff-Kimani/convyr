@@ -35,7 +35,10 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (searchParams.get("print") === "true" && !loading) {
-      setTimeout(() => window.print(), 500);
+      setTimeout(() => {
+        window.print();
+        window.history.replaceState({}, "", "/analytics");
+      }, 500);
     }
   }, [loading, searchParams]);
 
@@ -238,45 +241,19 @@ export default function AnalyticsPage() {
       <style>{`
         @media print {
           @page { margin: 20mm; size: A4; }
-          body { background: white !important; }
-          body > * { display: none !important; }
-          #print-report { display: block !important; position: static !important; width: 100% !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .no-print { display: none !important; }
-          .print-section { 
-            page-break-inside: avoid; 
-            break-inside: avoid;
-            margin-bottom: 16px; 
-          }
-          .print-page-break { 
-            page-break-before: always; 
-            break-before: always; 
-          }
-          .print-grid-2 { 
-            display: grid !important; 
-            grid-template-columns: 1fr 1fr !important; 
-            gap: 16px !important; 
-          }
-          .print-grid-3 { 
-            display: grid !important; 
-            grid-template-columns: 2fr 1fr !important; 
-            gap: 16px !important; 
-          }
-          .print-grid-4 { 
-            display: grid !important; 
-            grid-template-columns: 1fr 1fr 1fr 1fr !important; 
-            gap: 12px !important; 
-          }
+          nav, aside, header { display: none !important; }
+          .screen-only { display: none !important; }
+          #print-report { display: block !important; }
+          .print-section { page-break-inside: avoid; break-inside: avoid; margin-bottom: 16px; }
+          .print-page-break { page-break-before: always; break-before: always; }
         }
         #print-report { display: none; }
-        @media print {
-          #print-report { display: block; }
-        }
       `}</style>
 
       {/* Screen version */}
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between no-print">
+      <div className="screen-only flex flex-col gap-6">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
               Analytics
@@ -695,7 +672,6 @@ export default function AnalyticsPage() {
             Performance Overview
           </h2>
           <div
-            className="print-grid-4"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr 1fr 1fr",
