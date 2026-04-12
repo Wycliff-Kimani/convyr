@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Request, Query, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 import logging
 import asyncio
+import hashlib
 from supabase import create_client
 
 from app.config import settings
@@ -112,3 +113,83 @@ async def receive_webhook(request: Request):
         logger.error(f"Error processing webhook: {str(e)}")
 
     return {"status": "ok"}
+
+
+@router.post("/webhook/data-deletion")
+async def data_deletion_callback(request: Request):
+    """
+    Meta requires this endpoint to handle user data deletion requests.
+    When a user removes your app from their Facebook account, Meta sends
+    a signed request here. We delete all associated data from our database.
+    """
+    try:
+        payload = await request.json()
+        signed_request = payload.get("signed_request")
+
+        if not signed_request:
+            raise HTTPException(status_code=400, detail="Missing signed_request")
+
+        # Decode the signed request from Meta
+        import base64
+        import hmac
+        import json
+
+        parts = signed_request.split(".")
+        if len(parts) != 2:
+            raise HTTPException(status_code=400, detail="Invalid signed_request format")
+
+        encoded_sig, payload_b64 = parts
+
+        # Pad base64 string if needed
+        padding = 4 - len(payload_b64) % 4
+        if padding != 4:
+            payload_b64 += "=" * padding
+
+        decoded_payload = base64.urlsafe_b64decode(payload_b64)
+        data = json.loads(decoded_payload)
+
+        # Verify the signature using the app secret
+        expected_sig = hmac.new(
+            settings.META_APP_SECRET.encode("utf-8"),
+            payload_b64.encode("utf-8"),
+            hashlib.sha256
+        ).digest()
+        expected_sig_b64 = base64.urlsafe_b64encode(expected_sig).decode("utf-8").rstrip("=")
+
+        if not hmac.compare_digest(encoded_sig, expected_sig_b64):
+            logger.warning("Data deletion request failed signature verification")
+            raise HTTPException(status_code=403, detail="Invalid signature")
+
+        user_id = data.get("user_id")
+        logger.info(f"Data deletion request received for Facebook user_id: {user_id}")
+
+        # Delete the business and all associated data for this user
+        # We look up by facebook_user_id if stored, otherwise log and acknowledge
+        business_result = supabase.table("businesses").select("id").eq(
+            "facebook_user_id", user_id
+        ).execute()
+
+        if business_result.data:
+            business_id = business_result.data[0]["id"]
+
+            # Delete in order: messages → contacts → automations → business
+            supabase.table("messages").delete().eq("business_id", business_id).execute()
+            supabase.table("contacts").delete().eq("business_id", business_id).execute()
+            supabase.table("automations").delete().eq("business_id", business_id).execute()
+            supabase.table("businesses").delete().eq("id", business_id).execute()
+
+            logger.info(f"Deleted all data for business_id: {business_id}")
+
+        # Meta requires a confirmation response with a URL the user can check
+        confirmation_code = hashlib.sha256(f"{user_id}-deleted".encode()).hexdigest()[:16]
+
+        return JSONResponse({
+            "url": f"https://convyr.vercel.app/privacy",
+            "confirmation_code": confirmation_code
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing data deletion request: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to process deletion request")

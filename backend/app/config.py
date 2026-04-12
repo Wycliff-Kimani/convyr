@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     WHATSAPP_PHONE_NUMBER_ID: str
     WHATSAPP_BUSINESS_ACCOUNT_ID: str
     WHATSAPP_VERIFY_TOKEN: str
+    META_APP_SECRET: str = ""
 
     # ========================
     # Supabase
