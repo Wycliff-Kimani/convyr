@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, Contact, Message } from "@/lib/api";
 import { auth } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
@@ -11,6 +12,7 @@ export default function OverviewPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const user = auth.getUser();
+  const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,7 +79,7 @@ export default function OverviewPage() {
           </p>
         </div>
         <button
-          onClick={() => window.print()}
+          onClick={() => router.push("/analytics?print=true")}
           className="flex items-center gap-2 bg-[#0F172A] hover:bg-[#1e293b] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           <Download size={15} /> Download Report

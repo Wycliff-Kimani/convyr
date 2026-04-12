@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api, Message, Automation, Business } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { TrendingUp, MessageSquare, Zap, Users, Download } from "lucide-react";
@@ -10,6 +11,7 @@ export default function AnalyticsPage() {
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,19 +33,26 @@ export default function AnalyticsPage() {
     fetchData();
   }, []);
 
-  const now = new Date();
-  const startOfThisWeek = new Date(now);
-  startOfThisWeek.setDate(now.getDate() - now.getDay());
-  startOfThisWeek.setHours(0, 0, 0, 0);
-  const startOfLastWeek = new Date(startOfThisWeek);
-  startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
+  useEffect(() => {
+    if (searchParams.get("print") === "true" && !loading) {
+      setTimeout(() => window.print(), 500);
+    }
+  }, [loading, searchParams]);
 
-  const thisWeekMsgs = messages.filter(
-    (m) => new Date(m.created_at) >= startOfThisWeek,
+  // Trend — last 7 days vs 7 days before that
+  const now = new Date();
+  const last7Start = new Date(now);
+  last7Start.setDate(now.getDate() - 7);
+  last7Start.setHours(0, 0, 0, 0);
+  const prev7Start = new Date(last7Start);
+  prev7Start.setDate(last7Start.getDate() - 7);
+
+  const last7Msgs = messages.filter(
+    (m) => new Date(m.created_at) >= last7Start,
   );
-  const lastWeekMsgs = messages.filter((m) => {
+  const prev7Msgs = messages.filter((m) => {
     const d = new Date(m.created_at);
-    return d >= startOfLastWeek && d < startOfThisWeek;
+    return d >= prev7Start && d < last7Start;
   });
 
   const inbound = messages.filter((m) => m.direction === "inbound");
@@ -53,30 +62,26 @@ export default function AnalyticsPage() {
       ? Math.round((outbound.length / inbound.length) * 100)
       : 0;
 
-  const thisWeekInbound = thisWeekMsgs.filter(
+  const last7Inbound = last7Msgs.filter(
     (m) => m.direction === "inbound",
   ).length;
-  const lastWeekInbound = lastWeekMsgs.filter(
+  const prev7Inbound = prev7Msgs.filter(
     (m) => m.direction === "inbound",
   ).length;
   const inboundTrend =
-    lastWeekInbound > 0
-      ? Math.round(
-          ((thisWeekInbound - lastWeekInbound) / lastWeekInbound) * 100,
-        )
+    prev7Inbound > 0
+      ? Math.round(((last7Inbound - prev7Inbound) / prev7Inbound) * 100)
       : null;
 
-  const thisWeekOutbound = thisWeekMsgs.filter(
+  const last7Outbound = last7Msgs.filter(
     (m) => m.direction === "outbound",
   ).length;
-  const lastWeekOutbound = lastWeekMsgs.filter(
+  const prev7Outbound = prev7Msgs.filter(
     (m) => m.direction === "outbound",
   ).length;
   const outboundTrend =
-    lastWeekOutbound > 0
-      ? Math.round(
-          ((thisWeekOutbound - lastWeekOutbound) / lastWeekOutbound) * 100,
-        )
+    prev7Outbound > 0
+      ? Math.round(((last7Outbound - prev7Outbound) / prev7Outbound) * 100)
       : null;
 
   // Last 7 days chart
@@ -97,7 +102,7 @@ export default function AnalyticsPage() {
     1,
   );
 
-  // SVG line chart data
+  // SVG line chart
   const svgWidth = 500;
   const svgHeight = 120;
   const padding = 20;
@@ -150,9 +155,8 @@ export default function AnalyticsPage() {
     }
     const entry = contactMessageCount.get(phone)!;
     entry.count++;
-    if (new Date(msg.created_at) > new Date(entry.lastSeen)) {
+    if (new Date(msg.created_at) > new Date(entry.lastSeen))
       entry.lastSeen = msg.created_at;
-    }
   });
   const topContacts = Array.from(contactMessageCount.values())
     .sort((a, b) => b.count - a.count)
@@ -229,30 +233,30 @@ export default function AnalyticsPage() {
     const trend =
       inboundTrend !== null
         ? inboundTrend >= 0
-          ? `up ${inboundTrend}%`
-          : `down ${Math.abs(inboundTrend)}%`
+          ? `up ${inboundTrend}% compared to the previous 7 days`
+          : `down ${Math.abs(inboundTrend)}% compared to the previous 7 days`
         : "stable";
-
-    return `${business?.name || "Your business"} has handled ${messages.length} total messages on WhatsApp, with a ${responseRate}% automation response rate. Message volume is ${trend} compared to last week. ${topContact ? `The most active contact is ${topContact.phone} with ${topContact.count} messages.` : ""} ${topAuto ? `The most triggered automation is "${topAuto.name}" with ${topAuto.count} triggers.` : ""} Peak customer activity occurs at ${peakTime}.`;
+    return `${business?.name || "Your business"} has handled ${messages.length} total messages on WhatsApp, with a ${responseRate}% automation response rate. Message volume is ${trend}. ${topContact ? `The most active contact is ${topContact.phone} with ${topContact.count} messages.` : ""} ${topAuto ? `The most triggered automation is "${topAuto.name}" with ${topAuto.count} triggers.` : ""} Peak customer activity occurs at ${peakTime}.`;
   };
 
   return (
     <>
-      {/* Print styles */}
       <style>{`
         @media print {
           body * { visibility: hidden; }
           #report-content, #report-content * { visibility: visible; }
-          #report-content { position: absolute; left: 0; top: 0; width: 100%; }
+          #report-content { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; }
           .no-print { display: none !important; }
+          .print-section { page-break-inside: avoid; margin-bottom: 24px; }
           .print-break { page-break-before: always; }
           body { background: white; }
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       `}</style>
 
       <div id="report-content" className="flex flex-col gap-6">
-        {/* Report Header — visible only when printing */}
-        <div className="hidden print:block mb-6 border-b border-gray-200 pb-6">
+        {/* Report Header — print only */}
+        <div className="hidden print:block print-section mb-4 border-b border-gray-200 pb-6">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-[#0F172A]">
@@ -292,9 +296,9 @@ export default function AnalyticsPage() {
           </button>
         </div>
 
-        {/* Executive Summary — visible only when printing */}
+        {/* Executive Summary — print only */}
         {!loading && (
-          <div className="hidden print:block bg-gray-50 rounded-xl p-5 mb-2">
+          <div className="hidden print:block print-section bg-gray-50 rounded-xl p-5">
             <h2 className="text-base font-semibold text-[#0F172A] mb-2">
               Executive Summary
             </h2>
@@ -305,7 +309,7 @@ export default function AnalyticsPage() {
         )}
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="print-section grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {stats.map((stat) => (
             <div
               key={stat.label}
@@ -337,8 +341,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Line Chart + Peak Hour */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* SVG Line Chart */}
+        <div className="print-section grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
             <h2 className="text-base font-semibold text-[#0F172A] mb-1">
               Message Activity — Last 7 Days
@@ -355,7 +358,6 @@ export default function AnalyticsPage() {
                   className="w-full"
                   preserveAspectRatio="none"
                 >
-                  {/* Grid lines */}
                   {[0, 0.25, 0.5, 0.75, 1].map((t) => (
                     <line
                       key={t}
@@ -367,19 +369,16 @@ export default function AnalyticsPage() {
                       strokeWidth="1"
                     />
                   ))}
-                  {/* Inbound area fill */}
                   <path
                     d={`${toPath(inboundPoints)} L ${inboundPoints[inboundPoints.length - 1].x} ${svgHeight - padding} L ${inboundPoints[0].x} ${svgHeight - padding} Z`}
                     fill="#bfdbfe"
                     opacity="0.3"
                   />
-                  {/* Outbound area fill */}
                   <path
                     d={`${toPath(outboundPoints)} L ${outboundPoints[outboundPoints.length - 1].x} ${svgHeight - padding} L ${outboundPoints[0].x} ${svgHeight - padding} Z`}
                     fill="#25D366"
                     opacity="0.15"
                   />
-                  {/* Inbound line */}
                   <path
                     d={toPath(inboundPoints)}
                     fill="none"
@@ -388,7 +387,6 @@ export default function AnalyticsPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
-                  {/* Outbound line */}
                   <path
                     d={toPath(outboundPoints)}
                     fill="none"
@@ -397,7 +395,6 @@ export default function AnalyticsPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
-                  {/* Dots */}
                   {inboundPoints.map((p, i) => (
                     <circle
                       key={`in-${i}`}
@@ -417,7 +414,6 @@ export default function AnalyticsPage() {
                     />
                   ))}
                 </svg>
-                {/* X axis labels */}
                 <div className="flex justify-between mt-2">
                   {dateEntries.map(([date]) => (
                     <p
@@ -466,7 +462,6 @@ export default function AnalyticsPage() {
                     {hourCounts[peakHour]} messages
                   </p>
                 </div>
-                {/* 24-hour heatmap grid */}
                 <div className="grid grid-cols-6 gap-1">
                   {hourCounts.map((count, hour) => {
                     const intensity = count / maxHourCount;
@@ -512,8 +507,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Top Contacts + Top Automations */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Top Contacts */}
+        <div className="print-section grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
             <h2 className="text-base font-semibold text-[#0F172A] mb-1">
               Top Contacts
@@ -559,7 +553,6 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          {/* Top Automations */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
             <h2 className="text-base font-semibold text-[#0F172A] mb-1">
               Top Automations
@@ -608,7 +601,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Print footer */}
-        <div className="hidden print:block mt-8 pt-4 border-t border-gray-200 text-center">
+        <div className="hidden print:block print-section mt-4 pt-4 border-t border-gray-200 text-center">
           <p className="text-xs text-gray-400">
             Generated by Convyr — WhatsApp Business Automation
           </p>
