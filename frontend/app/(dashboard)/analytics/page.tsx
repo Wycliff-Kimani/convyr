@@ -240,15 +240,40 @@ export default function AnalyticsPage() {
     <>
       <style>{`
         @media print {
-          @page { margin: 20mm; size: A4; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          nav, aside, header { display: none !important; }
-          .screen-only { display: none !important; }
-          #print-report { display: block !important; }
-          .print-section { page-break-inside: avoid; break-inside: avoid; margin-bottom: 16px; }
-          .print-page-break { page-break-before: always; break-before: always; }
+          @page {
+            size: A4 portrait;
+            margin: 15mm;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body, html {
+            width: 210mm;
+            background: white !important;
+          }
+          nav, aside, header, .screen-only {
+            display: none !important;
+          }
+          #print-report {
+            display: block !important;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+          }
+          .print-page {
+            width: 100%;
+            page-break-after: always;
+            break-after: always;
+            padding-bottom: 10mm;
+          }
+          .print-page:last-child {
+            page-break-after: avoid;
+            break-after: avoid;
+          }
         }
-        #print-report { display: none; }
+        #print-report {
+          display: none;
+        }
       `}</style>
 
       {/* Screen version */}
@@ -561,24 +586,24 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Print version — separate clean document */}
+      {/* Print version — 3 separate pages */}
       <div id="print-report">
-        {/* Page 1 — Header + Summary + Stats */}
-        <div className="print-section">
+        {/* PAGE 1 — Header + Summary + Stats */}
+        <div className="print-page">
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "flex-start",
               borderBottom: "2px solid #e2e8f0",
-              paddingBottom: "16px",
-              marginBottom: "24px",
+              paddingBottom: "14px",
+              marginBottom: "20px",
             }}
           >
             <div>
               <h1
                 style={{
-                  fontSize: "24px",
+                  fontSize: "22px",
                   fontWeight: "bold",
                   color: "#0F172A",
                   margin: 0,
@@ -588,7 +613,7 @@ export default function AnalyticsPage() {
               </h1>
               <p
                 style={{
-                  fontSize: "14px",
+                  fontSize: "13px",
                   color: "#64748b",
                   margin: "4px 0 0",
                 }}
@@ -597,7 +622,7 @@ export default function AnalyticsPage() {
               </p>
               <p
                 style={{
-                  fontSize: "12px",
+                  fontSize: "11px",
                   color: "#94a3b8",
                   margin: "2px 0 0",
                 }}
@@ -606,12 +631,12 @@ export default function AnalyticsPage() {
               </p>
             </div>
             <div style={{ textAlign: "right" }}>
-              <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>
+              <p style={{ fontSize: "10px", color: "#94a3b8", margin: 0 }}>
                 Generated
               </p>
               <p
                 style={{
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: "600",
                   color: "#0F172A",
                   margin: "2px 0 0",
@@ -621,7 +646,7 @@ export default function AnalyticsPage() {
               </p>
               <p
                 style={{
-                  fontSize: "11px",
+                  fontSize: "10px",
                   color: "#94a3b8",
                   margin: "4px 0 0",
                 }}
@@ -634,14 +659,15 @@ export default function AnalyticsPage() {
           <div
             style={{
               background: "#f8fafc",
-              borderRadius: "12px",
-              padding: "16px",
-              marginBottom: "24px",
+              borderRadius: "10px",
+              padding: "14px",
+              marginBottom: "20px",
+              border: "1px solid #e2e8f0",
             }}
           >
             <h2
               style={{
-                fontSize: "14px",
+                fontSize: "13px",
                 fontWeight: "600",
                 color: "#0F172A",
                 margin: "0 0 8px",
@@ -651,9 +677,9 @@ export default function AnalyticsPage() {
             </h2>
             <p
               style={{
-                fontSize: "13px",
+                fontSize: "12px",
                 color: "#475569",
-                lineHeight: "1.6",
+                lineHeight: "1.7",
                 margin: 0,
               }}
             >
@@ -663,10 +689,10 @@ export default function AnalyticsPage() {
 
           <h2
             style={{
-              fontSize: "14px",
+              fontSize: "13px",
               fontWeight: "600",
               color: "#0F172A",
-              margin: "0 0 12px",
+              margin: "0 0 10px",
             }}
           >
             Performance Overview
@@ -675,8 +701,8 @@ export default function AnalyticsPage() {
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr 1fr 1fr",
-              gap: "12px",
-              marginBottom: "24px",
+              gap: "10px",
+              marginBottom: "20px",
             }}
           >
             {stats.map((stat) => (
@@ -684,13 +710,13 @@ export default function AnalyticsPage() {
                 key={stat.label}
                 style={{
                   border: "1px solid #e2e8f0",
-                  borderRadius: "12px",
+                  borderRadius: "10px",
                   padding: "12px",
                 }}
               >
                 <p
                   style={{
-                    fontSize: "22px",
+                    fontSize: "24px",
                     fontWeight: "bold",
                     color: "#0F172A",
                     margin: "0 0 4px",
@@ -698,13 +724,13 @@ export default function AnalyticsPage() {
                 >
                   {stat.value}
                 </p>
-                <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>
+                <p style={{ fontSize: "10px", color: "#94a3b8", margin: 0 }}>
                   {stat.label}
                 </p>
                 {stat.trend !== null && (
                   <p
                     style={{
-                      fontSize: "11px",
+                      fontSize: "10px",
                       color: stat.trend >= 0 ? "#16a34a" : "#dc2626",
                       margin: "4px 0 0",
                     }}
@@ -716,16 +742,13 @@ export default function AnalyticsPage() {
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Page 2 — Chart + Peak Hour */}
-        <div className="print-page-break print-section">
           <h2
             style={{
-              fontSize: "14px",
+              fontSize: "13px",
               fontWeight: "600",
               color: "#0F172A",
-              margin: "0 0 12px",
+              margin: "0 0 10px",
             }}
           >
             Message Activity — Last 7 Days
@@ -733,9 +756,9 @@ export default function AnalyticsPage() {
           <div
             style={{
               border: "1px solid #e2e8f0",
-              borderRadius: "12px",
-              padding: "16px",
-              marginBottom: "24px",
+              borderRadius: "10px",
+              padding: "14px",
+              marginBottom: "20px",
             }}
           >
             <svg
@@ -803,14 +826,14 @@ export default function AnalyticsPage() {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                marginTop: "8px",
+                marginTop: "6px",
               }}
             >
               {dateEntries.map(([date]) => (
                 <p
                   key={date}
                   style={{
-                    fontSize: "10px",
+                    fontSize: "9px",
                     color: "#cbd5e1",
                     textAlign: "center",
                     margin: 0,
@@ -821,9 +844,9 @@ export default function AnalyticsPage() {
                 </p>
               ))}
             </div>
-            <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
+            <div style={{ display: "flex", gap: "14px", marginTop: "10px" }}>
               <div
-                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                style={{ display: "flex", alignItems: "center", gap: "5px" }}
               >
                 <div
                   style={{
@@ -833,12 +856,12 @@ export default function AnalyticsPage() {
                     borderRadius: "2px",
                   }}
                 />
-                <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                <span style={{ fontSize: "10px", color: "#94a3b8" }}>
                   Received
                 </span>
               </div>
               <div
-                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                style={{ display: "flex", alignItems: "center", gap: "5px" }}
               >
                 <div
                   style={{
@@ -848,17 +871,17 @@ export default function AnalyticsPage() {
                     borderRadius: "2px",
                   }}
                 />
-                <span style={{ fontSize: "11px", color: "#94a3b8" }}>Sent</span>
+                <span style={{ fontSize: "10px", color: "#94a3b8" }}>Sent</span>
               </div>
             </div>
           </div>
 
           <h2
             style={{
-              fontSize: "14px",
+              fontSize: "13px",
               fontWeight: "600",
               color: "#0F172A",
-              margin: "0 0 12px",
+              margin: "0 0 10px",
             }}
           >
             Peak Activity Hours
@@ -866,13 +889,12 @@ export default function AnalyticsPage() {
           <div
             style={{
               border: "1px solid #e2e8f0",
-              borderRadius: "12px",
-              padding: "16px",
-              marginBottom: "24px",
+              borderRadius: "10px",
+              padding: "14px",
             }}
           >
             <p
-              style={{ fontSize: "13px", color: "#475569", margin: "0 0 12px" }}
+              style={{ fontSize: "12px", color: "#475569", margin: "0 0 10px" }}
             >
               Peak hour:{" "}
               <strong>{peakHour.toString().padStart(2, "0")}:00</strong> —{" "}
@@ -882,7 +904,7 @@ export default function AnalyticsPage() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(12, 1fr)",
-                gap: "4px",
+                gap: "3px",
               }}
             >
               {hourCounts.map((count, hour) => {
@@ -902,12 +924,12 @@ export default function AnalyticsPage() {
                     key={hour}
                     style={{
                       background: bg,
-                      borderRadius: "4px",
-                      padding: "6px 2px",
+                      borderRadius: "3px",
+                      padding: "5px 2px",
                       textAlign: "center",
                     }}
                   >
-                    <span style={{ fontSize: "9px", color: "#64748b" }}>
+                    <span style={{ fontSize: "8px", color: "#64748b" }}>
                       {hour}
                     </span>
                   </div>
@@ -917,22 +939,22 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Page 3 — Top Contacts + Top Automations */}
-        <div className="print-page-break print-section">
+        {/* PAGE 2 — Top Contacts + Top Automations + Footer */}
+        <div className="print-page">
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gap: "24px",
+              gap: "20px",
             }}
           >
             <div>
               <h2
                 style={{
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: "600",
                   color: "#0F172A",
-                  margin: "0 0 12px",
+                  margin: "0 0 10px",
                 }}
               >
                 Top Contacts
@@ -940,17 +962,17 @@ export default function AnalyticsPage() {
               <div
                 style={{
                   border: "1px solid #e2e8f0",
-                  borderRadius: "12px",
-                  padding: "16px",
+                  borderRadius: "10px",
+                  padding: "14px",
                 }}
               >
                 {topContacts.length === 0 ? (
-                  <p style={{ fontSize: "13px", color: "#94a3b8", margin: 0 }}>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
                     No contacts yet.
                   </p>
                 ) : (
                   topContacts.map(({ phone, count, lastSeen }) => (
-                    <div key={phone} style={{ marginBottom: "16px" }}>
+                    <div key={phone} style={{ marginBottom: "14px" }}>
                       <div
                         style={{
                           display: "flex",
@@ -960,14 +982,14 @@ export default function AnalyticsPage() {
                       >
                         <span
                           style={{
-                            fontSize: "12px",
+                            fontSize: "11px",
                             fontWeight: "500",
                             color: "#0F172A",
                           }}
                         >
                           {phone}
                         </span>
-                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>
                           {count} msgs
                         </span>
                       </div>
@@ -975,20 +997,20 @@ export default function AnalyticsPage() {
                         style={{
                           background: "#f1f5f9",
                           borderRadius: "4px",
-                          height: "6px",
-                          marginBottom: "4px",
+                          height: "5px",
+                          marginBottom: "3px",
                         }}
                       >
                         <div
                           style={{
                             background: "#a78bfa",
                             borderRadius: "4px",
-                            height: "6px",
+                            height: "5px",
                             width: `${(count / maxContactCount) * 100}%`,
                           }}
                         />
                       </div>
-                      <span style={{ fontSize: "10px", color: "#cbd5e1" }}>
+                      <span style={{ fontSize: "9px", color: "#cbd5e1" }}>
                         Last seen: {formatDate(lastSeen)}
                       </span>
                     </div>
@@ -1000,10 +1022,10 @@ export default function AnalyticsPage() {
             <div>
               <h2
                 style={{
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: "600",
                   color: "#0F172A",
-                  margin: "0 0 12px",
+                  margin: "0 0 10px",
                 }}
               >
                 Top Automations
@@ -1011,17 +1033,17 @@ export default function AnalyticsPage() {
               <div
                 style={{
                   border: "1px solid #e2e8f0",
-                  borderRadius: "12px",
-                  padding: "16px",
+                  borderRadius: "10px",
+                  padding: "14px",
                 }}
               >
                 {topAutomations.length === 0 ? (
-                  <p style={{ fontSize: "13px", color: "#94a3b8", margin: 0 }}>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
                     No automation triggers fired yet.
                   </p>
                 ) : (
                   topAutomations.map(({ name, count }) => (
-                    <div key={name} style={{ marginBottom: "16px" }}>
+                    <div key={name} style={{ marginBottom: "14px" }}>
                       <div
                         style={{
                           display: "flex",
@@ -1031,14 +1053,14 @@ export default function AnalyticsPage() {
                       >
                         <span
                           style={{
-                            fontSize: "12px",
+                            fontSize: "11px",
                             fontWeight: "500",
                             color: "#0F172A",
                           }}
                         >
                           {name}
                         </span>
-                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>
                           {count} triggers
                         </span>
                       </div>
@@ -1046,20 +1068,20 @@ export default function AnalyticsPage() {
                         style={{
                           background: "#f1f5f9",
                           borderRadius: "4px",
-                          height: "6px",
-                          marginBottom: "4px",
+                          height: "5px",
+                          marginBottom: "3px",
                         }}
                       >
                         <div
                           style={{
                             background: "#25D366",
                             borderRadius: "4px",
-                            height: "6px",
+                            height: "5px",
                             width: `${(count / maxAutoCount) * 100}%`,
                           }}
                         />
                       </div>
-                      <span style={{ fontSize: "10px", color: "#cbd5e1" }}>
+                      <span style={{ fontSize: "9px", color: "#cbd5e1" }}>
                         {Math.round((count / outbound.length) * 100)}% of all
                         auto-replies
                       </span>
@@ -1073,17 +1095,15 @@ export default function AnalyticsPage() {
           <div
             style={{
               marginTop: "40px",
-              paddingTop: "16px",
+              paddingTop: "14px",
               borderTop: "1px solid #e2e8f0",
               textAlign: "center",
             }}
           >
-            <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>
+            <p style={{ fontSize: "10px", color: "#94a3b8", margin: 0 }}>
               Generated by Convyr — WhatsApp Business Automation
             </p>
-            <p
-              style={{ fontSize: "10px", color: "#cbd5e1", margin: "4px 0 0" }}
-            >
+            <p style={{ fontSize: "9px", color: "#cbd5e1", margin: "3px 0 0" }}>
               convyr.vercel.app
             </p>
           </div>
