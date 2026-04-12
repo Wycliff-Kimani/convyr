@@ -54,6 +54,12 @@ export const api = {
   // Business
   getBusiness: () => apiRequest<Business>("/business"),
 
+  connectWhatsApp: (code: string) =>
+    apiRequest<Business>("/business/connect-whatsapp", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+
   // Contacts
   getContacts: () =>
     apiRequest<{ contacts: Contact[]; total: number }>("/contacts"),
@@ -111,6 +117,8 @@ export interface Business {
   name: string;
   email: string;
   phone_number: string | null;
+  whatsapp_phone_number_id: string | null;
+  whatsapp_business_account_id: string | null;
   subscription_plan: string;
   subscription_status: string;
   created_at: string;

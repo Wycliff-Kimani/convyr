@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, Contact, Message } from "@/lib/api";
+import { api, Contact, Message, Business } from "@/lib/api";
 import { auth } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
-import { Users, MessageSquare, Zap, TrendingUp, Download } from "lucide-react";
+import { Users, MessageSquare, Zap, TrendingUp, Download, AlertCircle } from "lucide-react";
 
 export default function OverviewPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const user = auth.getUser();
   const router = useRouter();
@@ -17,12 +18,14 @@ export default function OverviewPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [contactsRes, messagesRes] = await Promise.all([
+        const [contactsRes, messagesRes, businessRes] = await Promise.all([
           api.getContacts(),
           api.getMessages(),
+          api.getBusiness(),
         ]);
         setContacts(contactsRes.contacts);
         setMessages(messagesRes.messages);
+        setBusiness(businessRes);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
@@ -35,6 +38,7 @@ export default function OverviewPage() {
   const inboundMessages = messages.filter((m) => m.direction === "inbound");
   const outboundMessages = messages.filter((m) => m.direction === "outbound");
   const recentMessages = messages.slice(0, 5);
+  const isWhatsAppConnected = !!business?.whatsapp_phone_number_id;
 
   const stats = [
     {
@@ -69,6 +73,30 @@ export default function OverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* WhatsApp connection banner */}
+      {!loading && !isWhatsAppConnected && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">
+                WhatsApp not connected
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Connect your WhatsApp Business number to start automating customer replies.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => router.push("/connect-whatsapp")}
+            className="bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0"
+          >
+            Connect WhatsApp
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">

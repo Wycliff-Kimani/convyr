@@ -33,8 +33,8 @@ export default function PrivacyPage() {
             <p className="text-gray-600 leading-relaxed text-sm">
               Convyr is a WhatsApp Business Automation platform operated by
               DevCraft Solutions, a business registered in Kenya. Our registered
-              address is Spur Mall, Ruiru, Kiambu County, Kenya. You can contact
-              us at{" "}
+              address is Chandaria Business Center, Ruiru, Kiambu County, Kenya.
+              You can contact us at{" "}
               <a
                 href="mailto:wycliffkimani9@gmail.com"
                 className="text-[#25D366] hover:underline"
