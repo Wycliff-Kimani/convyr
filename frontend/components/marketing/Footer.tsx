@@ -24,39 +24,24 @@ export default function Footer() {
         <div className="flex gap-16">
           <div className="flex flex-col gap-2 text-sm">
             <p className="text-white font-medium mb-1">Product</p>
-            <Link
-              href="/pricing"
-              className="hover:text-white transition-colors"
-            >
-              Pricing
-            </Link>
-            <Link href="/about" className="hover:text-white transition-colors">
-              About
-            </Link>
-            <Link
-              href="/contact"
-              className="hover:text-white transition-colors"
-            >
-              Contact
-            </Link>
+            <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
+            <Link href="/about" className="hover:text-white transition-colors">About</Link>
+            <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
           </div>
           <div className="flex flex-col gap-2 text-sm">
             <p className="text-white font-medium mb-1">Account</p>
-            <Link href="/login" className="hover:text-white transition-colors">
-              Log in
-            </Link>
-            <Link
-              href="/register"
-              className="hover:text-white transition-colors"
-            >
-              Sign up
-            </Link>
+            <Link href="/login" className="hover:text-white transition-colors">Log in</Link>
+            <Link href="/register" className="hover:text-white transition-colors">Sign up</Link>
+          </div>
+          <div className="flex flex-col gap-2 text-sm">
+            <p className="text-white font-medium mb-1">Legal</p>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
           </div>
         </div>
       </div>
       <div className="max-w-5xl mx-auto mt-10 pt-6 border-t border-gray-800 text-xs text-center">
-        © {new Date().getFullYear()} Convyr by DevCraft Technologies. All rights
-        reserved.
+        © {new Date().getFullYear()} Convyr by DevCraft Solutions. All rights reserved.
       </div>
     </footer>
   );
