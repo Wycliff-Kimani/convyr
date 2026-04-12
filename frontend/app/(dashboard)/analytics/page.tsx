@@ -39,7 +39,6 @@ export default function AnalyticsPage() {
     }
   }, [loading, searchParams]);
 
-  // Trend — last 7 days vs 7 days before that
   const now = new Date();
   const last7Start = new Date(now);
   last7Start.setDate(now.getDate() - 7);
@@ -84,7 +83,6 @@ export default function AnalyticsPage() {
       ? Math.round(((last7Outbound - prev7Outbound) / prev7Outbound) * 100)
       : null;
 
-  // Last 7 days chart
   const byDate = new Map<string, { inbound: number; outbound: number }>();
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
@@ -102,7 +100,6 @@ export default function AnalyticsPage() {
     1,
   );
 
-  // SVG line chart
   const svgWidth = 500;
   const svgHeight = 120;
   const padding = 20;
@@ -129,7 +126,6 @@ export default function AnalyticsPage() {
   const toPath = (points: { x: number; y: number }[]) =>
     points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
 
-  // Peak hour
   const hourCounts = new Array(24).fill(0);
   inbound.forEach((msg) => {
     const hour = new Date(msg.created_at).getHours();
@@ -138,7 +134,6 @@ export default function AnalyticsPage() {
   const maxHourCount = Math.max(...hourCounts, 1);
   const peakHour = hourCounts.indexOf(Math.max(...hourCounts));
 
-  // Top contacts
   const contactMessageCount = new Map<
     string,
     { phone: string; count: number; lastSeen: string }
@@ -163,7 +158,6 @@ export default function AnalyticsPage() {
     .slice(0, 5);
   const maxContactCount = topContacts[0]?.count || 1;
 
-  // Top automations
   const keywordHits = new Map<string, { name: string; count: number }>();
   automations.forEach((auto) => {
     if (!auto.keyword) return;
@@ -243,41 +237,45 @@ export default function AnalyticsPage() {
     <>
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          #report-content, #report-content * { visibility: visible; }
-          #report-content { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; }
+          @page { margin: 20mm; size: A4; }
+          body { background: white !important; }
+          body > * { display: none !important; }
+          #print-report { display: block !important; position: static !important; width: 100% !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .no-print { display: none !important; }
-          .print-section { page-break-inside: avoid; margin-bottom: 24px; }
-          .print-break { page-break-before: always; }
-          body { background: white; }
-          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-section { 
+            page-break-inside: avoid; 
+            break-inside: avoid;
+            margin-bottom: 16px; 
+          }
+          .print-page-break { 
+            page-break-before: always; 
+            break-before: always; 
+          }
+          .print-grid-2 { 
+            display: grid !important; 
+            grid-template-columns: 1fr 1fr !important; 
+            gap: 16px !important; 
+          }
+          .print-grid-3 { 
+            display: grid !important; 
+            grid-template-columns: 2fr 1fr !important; 
+            gap: 16px !important; 
+          }
+          .print-grid-4 { 
+            display: grid !important; 
+            grid-template-columns: 1fr 1fr 1fr 1fr !important; 
+            gap: 12px !important; 
+          }
+        }
+        #print-report { display: none; }
+        @media print {
+          #print-report { display: block; }
         }
       `}</style>
 
-      <div id="report-content" className="flex flex-col gap-6">
-        {/* Report Header — print only */}
-        <div className="hidden print:block print-section mb-4 border-b border-gray-200 pb-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-[#0F172A]">
-                Convyr Business Report
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {business?.name || "Business"}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">{business?.email}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400">Generated</p>
-              <p className="text-sm font-medium text-[#0F172A]">{reportDate}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Plan: {business?.subscription_plan?.toUpperCase() || "TRIAL"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Screen Header */}
+      {/* Screen version */}
+      <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between no-print">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
@@ -296,20 +294,8 @@ export default function AnalyticsPage() {
           </button>
         </div>
 
-        {/* Executive Summary — print only */}
-        {!loading && (
-          <div className="hidden print:block print-section bg-gray-50 rounded-xl p-5">
-            <h2 className="text-base font-semibold text-[#0F172A] mb-2">
-              Executive Summary
-            </h2>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              {generateSummary()}
-            </p>
-          </div>
-        )}
-
         {/* Stat Cards */}
-        <div className="print-section grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {stats.map((stat) => (
             <div
               key={stat.label}
@@ -333,20 +319,18 @@ export default function AnalyticsPage() {
                 {loading ? "..." : stat.value}
               </p>
               <p className="text-xs text-gray-400 mt-1">{stat.label}</p>
-              <p className="text-[10px] text-gray-300 mt-1 no-print">
-                {stat.tooltip}
-              </p>
+              <p className="text-[10px] text-gray-300 mt-1">{stat.tooltip}</p>
             </div>
           ))}
         </div>
 
         {/* Line Chart + Peak Hour */}
-        <div className="print-section grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
             <h2 className="text-base font-semibold text-[#0F172A] mb-1">
               Message Activity — Last 7 Days
             </h2>
-            <p className="text-xs text-gray-400 mb-4 no-print">
+            <p className="text-xs text-gray-400 mb-4">
               Blue = received, green = sent
             </p>
             {loading ? (
@@ -439,12 +423,11 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          {/* Peak Hour Heatmap */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
             <h2 className="text-base font-semibold text-[#0F172A] mb-1">
               Peak Activity
             </h2>
-            <p className="text-xs text-gray-400 mb-4 no-print">
+            <p className="text-xs text-gray-400 mb-4">
               Busiest hours of the day
             </p>
             {loading ? (
@@ -507,12 +490,12 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Top Contacts + Top Automations */}
-        <div className="print-section grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
             <h2 className="text-base font-semibold text-[#0F172A] mb-1">
               Top Contacts
             </h2>
-            <p className="text-xs text-gray-400 mb-4 no-print">
+            <p className="text-xs text-gray-400 mb-4">
               Most active customers by message count
             </p>
             {loading ? (
@@ -557,7 +540,7 @@ export default function AnalyticsPage() {
             <h2 className="text-base font-semibold text-[#0F172A] mb-1">
               Top Automations
             </h2>
-            <p className="text-xs text-gray-400 mb-4 no-print">
+            <p className="text-xs text-gray-400 mb-4">
               Most triggered automation rules
             </p>
             {loading ? (
@@ -599,13 +582,535 @@ export default function AnalyticsPage() {
             )}
           </div>
         </div>
+      </div>
 
-        {/* Print footer */}
-        <div className="hidden print:block print-section mt-4 pt-4 border-t border-gray-200 text-center">
-          <p className="text-xs text-gray-400">
-            Generated by Convyr — WhatsApp Business Automation
-          </p>
-          <p className="text-xs text-gray-300">convyr.vercel.app</p>
+      {/* Print version — separate clean document */}
+      <div id="print-report">
+        {/* Page 1 — Header + Summary + Stats */}
+        <div className="print-section">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              borderBottom: "2px solid #e2e8f0",
+              paddingBottom: "16px",
+              marginBottom: "24px",
+            }}
+          >
+            <div>
+              <h1
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "bold",
+                  color: "#0F172A",
+                  margin: 0,
+                }}
+              >
+                Convyr Business Report
+              </h1>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  margin: "4px 0 0",
+                }}
+              >
+                {business?.name || "Business"}
+              </p>
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "#94a3b8",
+                  margin: "2px 0 0",
+                }}
+              >
+                {business?.email}
+              </p>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>
+                Generated
+              </p>
+              <p
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: "#0F172A",
+                  margin: "2px 0 0",
+                }}
+              >
+                {reportDate}
+              </p>
+              <p
+                style={{
+                  fontSize: "11px",
+                  color: "#94a3b8",
+                  margin: "4px 0 0",
+                }}
+              >
+                Plan: {business?.subscription_plan?.toUpperCase() || "TRIAL"}
+              </p>
+            </div>
+          </div>
+
+          <div
+            style={{
+              background: "#f8fafc",
+              borderRadius: "12px",
+              padding: "16px",
+              marginBottom: "24px",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#0F172A",
+                margin: "0 0 8px",
+              }}
+            >
+              Executive Summary
+            </h2>
+            <p
+              style={{
+                fontSize: "13px",
+                color: "#475569",
+                lineHeight: "1.6",
+                margin: 0,
+              }}
+            >
+              {generateSummary()}
+            </p>
+          </div>
+
+          <h2
+            style={{
+              fontSize: "14px",
+              fontWeight: "600",
+              color: "#0F172A",
+              margin: "0 0 12px",
+            }}
+          >
+            Performance Overview
+          </h2>
+          <div
+            className="print-grid-4"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr 1fr",
+              gap: "12px",
+              marginBottom: "24px",
+            }}
+          >
+            {stats.map((stat) => (
+              <div
+                key={stat.label}
+                style={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  padding: "12px",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: "22px",
+                    fontWeight: "bold",
+                    color: "#0F172A",
+                    margin: "0 0 4px",
+                  }}
+                >
+                  {stat.value}
+                </p>
+                <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>
+                  {stat.label}
+                </p>
+                {stat.trend !== null && (
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: stat.trend >= 0 ? "#16a34a" : "#dc2626",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {stat.trend >= 0 ? "↑" : "↓"} {Math.abs(stat.trend)}% vs
+                    prev 7 days
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Page 2 — Chart + Peak Hour */}
+        <div className="print-page-break print-section">
+          <h2
+            style={{
+              fontSize: "14px",
+              fontWeight: "600",
+              color: "#0F172A",
+              margin: "0 0 12px",
+            }}
+          >
+            Message Activity — Last 7 Days
+          </h2>
+          <div
+            style={{
+              border: "1px solid #e2e8f0",
+              borderRadius: "12px",
+              padding: "16px",
+              marginBottom: "24px",
+            }}
+          >
+            <svg
+              viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+              style={{ width: "100%" }}
+              preserveAspectRatio="none"
+            >
+              {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+                <line
+                  key={t}
+                  x1={padding}
+                  y1={padding + t * (svgHeight - padding * 2)}
+                  x2={svgWidth - padding}
+                  y2={padding + t * (svgHeight - padding * 2)}
+                  stroke="#f1f5f9"
+                  strokeWidth="1"
+                />
+              ))}
+              <path
+                d={`${toPath(inboundPoints)} L ${inboundPoints[inboundPoints.length - 1].x} ${svgHeight - padding} L ${inboundPoints[0].x} ${svgHeight - padding} Z`}
+                fill="#bfdbfe"
+                opacity="0.3"
+              />
+              <path
+                d={`${toPath(outboundPoints)} L ${outboundPoints[outboundPoints.length - 1].x} ${svgHeight - padding} L ${outboundPoints[0].x} ${svgHeight - padding} Z`}
+                fill="#25D366"
+                opacity="0.15"
+              />
+              <path
+                d={toPath(inboundPoints)}
+                fill="none"
+                stroke="#93c5fd"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d={toPath(outboundPoints)}
+                fill="none"
+                stroke="#25D366"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {inboundPoints.map((p, i) => (
+                <circle
+                  key={`in-${i}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r="3"
+                  fill="#93c5fd"
+                />
+              ))}
+              {outboundPoints.map((p, i) => (
+                <circle
+                  key={`out-${i}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r="3"
+                  fill="#25D366"
+                />
+              ))}
+            </svg>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: "8px",
+              }}
+            >
+              {dateEntries.map(([date]) => (
+                <p
+                  key={date}
+                  style={{
+                    fontSize: "10px",
+                    color: "#cbd5e1",
+                    textAlign: "center",
+                    margin: 0,
+                    width: `${100 / dateEntries.length}%`,
+                  }}
+                >
+                  {date.split(" ")[0]} {date.split(" ")[1]}
+                </p>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <div
+                  style={{
+                    width: "12px",
+                    height: "2px",
+                    background: "#93c5fd",
+                    borderRadius: "2px",
+                  }}
+                />
+                <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                  Received
+                </span>
+              </div>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <div
+                  style={{
+                    width: "12px",
+                    height: "2px",
+                    background: "#25D366",
+                    borderRadius: "2px",
+                  }}
+                />
+                <span style={{ fontSize: "11px", color: "#94a3b8" }}>Sent</span>
+              </div>
+            </div>
+          </div>
+
+          <h2
+            style={{
+              fontSize: "14px",
+              fontWeight: "600",
+              color: "#0F172A",
+              margin: "0 0 12px",
+            }}
+          >
+            Peak Activity Hours
+          </h2>
+          <div
+            style={{
+              border: "1px solid #e2e8f0",
+              borderRadius: "12px",
+              padding: "16px",
+              marginBottom: "24px",
+            }}
+          >
+            <p
+              style={{ fontSize: "13px", color: "#475569", margin: "0 0 12px" }}
+            >
+              Peak hour:{" "}
+              <strong>{peakHour.toString().padStart(2, "0")}:00</strong> —{" "}
+              {hourCounts[peakHour]} messages received
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(12, 1fr)",
+                gap: "4px",
+              }}
+            >
+              {hourCounts.map((count, hour) => {
+                const intensity = count / maxHourCount;
+                const bg =
+                  count === 0
+                    ? "#f1f5f9"
+                    : intensity > 0.75
+                      ? "#25D366"
+                      : intensity > 0.5
+                        ? "#86efac"
+                        : intensity > 0.25
+                          ? "#bbf7d0"
+                          : "#dcfce7";
+                return (
+                  <div
+                    key={hour}
+                    style={{
+                      background: bg,
+                      borderRadius: "4px",
+                      padding: "6px 2px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <span style={{ fontSize: "9px", color: "#64748b" }}>
+                      {hour}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Page 3 — Top Contacts + Top Automations */}
+        <div className="print-page-break print-section">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "24px",
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: "#0F172A",
+                  margin: "0 0 12px",
+                }}
+              >
+                Top Contacts
+              </h2>
+              <div
+                style={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  padding: "16px",
+                }}
+              >
+                {topContacts.length === 0 ? (
+                  <p style={{ fontSize: "13px", color: "#94a3b8", margin: 0 }}>
+                    No contacts yet.
+                  </p>
+                ) : (
+                  topContacts.map(({ phone, count, lastSeen }) => (
+                    <div key={phone} style={{ marginBottom: "16px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: "500",
+                            color: "#0F172A",
+                          }}
+                        >
+                          {phone}
+                        </span>
+                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                          {count} msgs
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          background: "#f1f5f9",
+                          borderRadius: "4px",
+                          height: "6px",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: "#a78bfa",
+                            borderRadius: "4px",
+                            height: "6px",
+                            width: `${(count / maxContactCount) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <span style={{ fontSize: "10px", color: "#cbd5e1" }}>
+                        Last seen: {formatDate(lastSeen)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h2
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: "#0F172A",
+                  margin: "0 0 12px",
+                }}
+              >
+                Top Automations
+              </h2>
+              <div
+                style={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  padding: "16px",
+                }}
+              >
+                {topAutomations.length === 0 ? (
+                  <p style={{ fontSize: "13px", color: "#94a3b8", margin: 0 }}>
+                    No automation triggers fired yet.
+                  </p>
+                ) : (
+                  topAutomations.map(({ name, count }) => (
+                    <div key={name} style={{ marginBottom: "16px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: "500",
+                            color: "#0F172A",
+                          }}
+                        >
+                          {name}
+                        </span>
+                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                          {count} triggers
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          background: "#f1f5f9",
+                          borderRadius: "4px",
+                          height: "6px",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: "#25D366",
+                            borderRadius: "4px",
+                            height: "6px",
+                            width: `${(count / maxAutoCount) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <span style={{ fontSize: "10px", color: "#cbd5e1" }}>
+                        {Math.round((count / outbound.length) * 100)}% of all
+                        auto-replies
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: "40px",
+              paddingTop: "16px",
+              borderTop: "1px solid #e2e8f0",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>
+              Generated by Convyr — WhatsApp Business Automation
+            </p>
+            <p
+              style={{ fontSize: "10px", color: "#cbd5e1", margin: "4px 0 0" }}
+            >
+              convyr.vercel.app
+            </p>
+          </div>
         </div>
       </div>
     </>
