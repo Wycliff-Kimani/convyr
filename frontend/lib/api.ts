@@ -51,6 +51,9 @@ export const api = {
 
   me: () => apiRequest<User>("/auth/me"),
 
+  // Business
+  getBusiness: () => apiRequest<Business>("/business"),
+
   // Contacts
   getContacts: () =>
     apiRequest<{ contacts: Contact[]; total: number }>("/contacts"),
@@ -101,6 +104,16 @@ export interface User {
   email: string;
   full_name: string;
   business_id: string;
+}
+
+export interface Business {
+  id: string;
+  name: string;
+  email: string;
+  phone_number: string | null;
+  subscription_plan: string;
+  subscription_status: string;
+  created_at: string;
 }
 
 export interface Contact {

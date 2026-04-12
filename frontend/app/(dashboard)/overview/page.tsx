@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, Contact, Message } from "@/lib/api";
 import { auth } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
-import { Users, MessageSquare, Zap, TrendingUp } from "lucide-react";
+import { Users, MessageSquare, Zap, TrendingUp, Download } from "lucide-react";
 
 export default function OverviewPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -67,13 +67,21 @@ export default function OverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
-          Good morning, {user?.full_name?.split(" ")[0]} 👋
-        </h1>
-        <p className="text-sm text-gray-400 mt-1">
-          Here's what's happening with your WhatsApp automation today.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
+            Good morning, {user?.full_name?.split(" ")[0]} 👋
+          </h1>
+          <p className="text-sm text-gray-400 mt-1">
+            Here's what's happening with your WhatsApp automation today.
+          </p>
+        </div>
+        <button
+          onClick={() => window.print()}
+          className="flex items-center gap-2 bg-[#0F172A] hover:bg-[#1e293b] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          <Download size={15} /> Download Report
+        </button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
