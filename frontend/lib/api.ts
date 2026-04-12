@@ -60,6 +60,12 @@ export const api = {
       body: JSON.stringify({ code }),
     }),
 
+  disconnectWhatsApp: () =>
+    apiRequest<Business>("/business/disconnect-whatsapp", { method: "POST" }),
+
+  deleteAccount: () =>
+    apiRequest<{ message: string }>("/account", { method: "DELETE" }),
+
   // Contacts
   getContacts: () =>
     apiRequest<{ contacts: Contact[]; total: number }>("/contacts"),

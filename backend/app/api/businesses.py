@@ -74,7 +74,6 @@ async def connect_whatsapp(data: ConnectWhatsAppInput, user=Depends(get_current_
     # Step 2 — Fetch the WhatsApp Business Account and phone number ID
     try:
         async with httpx.AsyncClient() as client:
-            # Get the WABA linked to this token
             waba_response = await client.get(
                 "https://graph.facebook.com/v19.0/me/businesses",
                 params={"access_token": access_token}
@@ -86,7 +85,6 @@ async def connect_whatsapp(data: ConnectWhatsAppInput, user=Depends(get_current_
             if waba_data.get("data"):
                 waba_id = waba_data["data"][0].get("id")
 
-            # Get phone numbers associated with the WABA
             phone_number_id = None
             if waba_id:
                 phones_response = await client.get(
@@ -115,9 +113,61 @@ async def connect_whatsapp(data: ConnectWhatsAppInput, user=Depends(get_current_
 
     logger.info(f"WhatsApp connected for business {business_id} — WABA: {waba_id}, Phone ID: {phone_number_id}")
 
-    # Return updated business
     result = supabase.table("businesses").select(
         "id, name, email, phone_number, whatsapp_phone_number_id, whatsapp_business_account_id, subscription_plan, subscription_status, created_at"
     ).eq("id", business_id).execute()
 
     return result.data[0]
+
+
+@router.post("/business/disconnect-whatsapp")
+async def disconnect_whatsapp(user=Depends(get_current_user)):
+    """
+    Clears the WhatsApp connection for the business —
+    nulls out the access token, phone number ID, and WABA ID.
+    """
+    business_id = user.get("business_id")
+
+    try:
+        supabase.table("businesses").update({
+            "whatsapp_access_token": None,
+            "whatsapp_business_account_id": None,
+            "whatsapp_phone_number_id": None,
+        }).eq("id", business_id).execute()
+    except Exception as e:
+        logger.error(f"Failed to disconnect WhatsApp for business {business_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to disconnect WhatsApp.")
+
+    logger.info(f"WhatsApp disconnected for business {business_id}")
+
+    result = supabase.table("businesses").select(
+        "id, name, email, phone_number, whatsapp_phone_number_id, whatsapp_business_account_id, subscription_plan, subscription_status, created_at"
+    ).eq("id", business_id).execute()
+
+    return result.data[0]
+
+
+@router.delete("/account")
+async def delete_account(user=Depends(get_current_user)):
+    """
+    Permanently deletes the user's account and all associated business data.
+    Deletion order: messages → contacts → automations → payments → businesses → users
+    """
+    business_id = user.get("business_id")
+    user_id = user.get("user_id")
+
+    try:
+        # Delete in dependency order
+        supabase.table("messages").delete().eq("business_id", business_id).execute()
+        supabase.table("contacts").delete().eq("business_id", business_id).execute()
+        supabase.table("automations").delete().eq("business_id", business_id).execute()
+        supabase.table("payments").delete().eq("business_id", business_id).execute()
+        supabase.table("businesses").delete().eq("id", business_id).execute()
+        supabase.table("users").delete().eq("id", user_id).execute()
+
+        logger.info(f"Account deleted — user {user_id}, business {business_id}")
+    except Exception as e:
+        logger.error(f"Failed to delete account for user {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete account. Please contact support.")
+
+    return {"message": "Account deleted successfully."}
