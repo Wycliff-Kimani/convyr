@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     UPSTASH_REDIS_REST_URL: str
     UPSTASH_REDIS_REST_TOKEN: str
 
+    # meta embedded signup
+    META_APP_ID: str = "1291380596389693"
+
     # ========================
     # PayHero
     # ========================
