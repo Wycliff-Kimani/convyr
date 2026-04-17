@@ -100,7 +100,7 @@ async def connect_whatsapp(data: ConnectWhatsAppInput, user=Depends(get_current_
 
             logger.info(f"debug_token response for business {business_id}: {debug_data}")
 
-            # Step 3 — Use WABA ID to get the phone number ID
+            # Step 3 — Use WABA ID to get the phone number ID and subscribe to Webhooks
             if waba_id:
                 phones_response = await client.get(
                     f"https://graph.facebook.com/v21.0/{waba_id}/phone_numbers",
@@ -110,6 +110,14 @@ async def connect_whatsapp(data: ConnectWhatsAppInput, user=Depends(get_current_
                 phones_data = phones_response.json()
                 if phones_data.get("data"):
                     phone_number_id = phones_data["data"][0].get("id")
+
+                # Step 3b - Subscribe the backend to Meta Webhooks for this WABA to receive messages
+                subscribe_response = await client.post(
+                    f"https://graph.facebook.com/v21.0/{waba_id}/subscribed_apps",
+                    headers={"Authorization": f"Bearer {access_token}"}
+                )
+                subscribe_response.raise_for_status()
+                logger.info(f"Subscribed app to Webhooks for WABA {waba_id}: {subscribe_response.json()}")
 
     except Exception as e:
         logger.error(f"Failed to fetch WhatsApp account details: {str(e)}")
