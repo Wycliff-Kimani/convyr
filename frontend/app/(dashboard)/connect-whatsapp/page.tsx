@@ -70,7 +70,8 @@ export default function ConnectWhatsAppPage() {
                 console.error("WhatsApp connect error:", err);
                 setStatus("error");
                 setErrorMessage(
-                  err.message || "Failed to connect WhatsApp. Please try again.",
+                  err.message ||
+                    "Failed to connect WhatsApp. Please try again.",
                 );
               });
           } else {
@@ -87,7 +88,7 @@ export default function ConnectWhatsAppPage() {
           override_default_response_type: true,
           extras: {
             setup: {},
-            featureType: "",
+            featureType: "whatsapp_business_app_onboarding",
             sessionInfoVersion: "3",
           },
         },
