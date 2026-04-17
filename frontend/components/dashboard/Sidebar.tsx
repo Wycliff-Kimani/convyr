@@ -27,7 +27,6 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <>
       {/* Desktop Sidebar */}
       <aside className="w-60 bg-white border-r border-gray-100 flex flex-col h-full">
         <div className="px-6 py-4 border-b border-gray-100 h-16 flex items-center">
@@ -74,25 +73,5 @@ export default function Sidebar() {
           </button>
         </div>
       </aside>
-
-      {/* Mobile Bottom Navbar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2">
-        {navItems.slice(0, 5).map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors ${
-                active ? "text-[#25D366]" : "text-gray-400"
-              }`}
-            >
-              <Icon size={20} />
-              <span className="text-[10px] font-medium">{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-    </>
   );
 }

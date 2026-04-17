@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { auth } from "@/lib/auth";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Navbar from "@/components/dashboard/Navbar";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 
 export default function DashboardLayout({
   children,
@@ -64,7 +65,8 @@ export default function DashboardLayout({
         <Navbar onMenuClick={() => setIsMobileMenuOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 md:pb-6">
           {children}
-        </main>{" "}
+        </main>
+        <MobileBottomNav />
       </div>
     </div>
   );
