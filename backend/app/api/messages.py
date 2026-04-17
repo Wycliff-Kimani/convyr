@@ -30,8 +30,10 @@ class SendMessageRequest(BaseModel):
 @router.get("/messages")
 async def get_messages(user=Depends(get_current_user)):
     business_id = user.get("business_id")
-    result = supabase.table("messages").select("*, contacts(phone_number, name)").eq("business_id", business_id).order("created_at", desc=False).limit(100).execute()
-    return {"messages": result.data, "total": len(result.data)}
+    result = supabase.table("messages").select("*, contacts(phone_number, name)").eq("business_id", business_id).order("created_at", desc=True).limit(200).execute()
+    data = result.data
+    data.reverse()
+    return {"messages": data, "total": len(data)}
 
 
 @router.post("/messages/send")
