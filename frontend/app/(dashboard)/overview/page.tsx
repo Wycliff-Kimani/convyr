@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { api, Contact, Message, Business } from "@/lib/api";
 import { auth } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
-import { Users, MessageSquare, Zap, TrendingUp, Download, AlertCircle } from "lucide-react";
+import {
+  Users,
+  MessageSquare,
+  Zap,
+  TrendingUp,
+  Download,
+  AlertCircle,
+} from "lucide-react";
 
 export default function OverviewPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -73,7 +80,6 @@ export default function OverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-
       {/* WhatsApp connection banner */}
       {!loading && !isWhatsAppConnected && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -84,7 +90,8 @@ export default function OverviewPage() {
                 WhatsApp not connected
               </p>
               <p className="text-xs text-amber-600 mt-0.5">
-                Connect your WhatsApp Business number to start automating customer replies.
+                Connect your WhatsApp Business number to start automating
+                customer replies.
               </p>
             </div>
           </div>

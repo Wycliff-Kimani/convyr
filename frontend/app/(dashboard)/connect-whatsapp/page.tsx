@@ -29,7 +29,7 @@ export default function ConnectWhatsAppPage() {
         appId: META_APP_ID,
         autoLogAppEvents: true,
         xfbml: true,
-        version: "v19.0",
+        version: "v21.0",
       });
       setSdkReady(true);
     };
