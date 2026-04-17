@@ -76,7 +76,7 @@ export default function ConnectWhatsAppPage() {
         }
       },
       {
-        config_id: META_APP_ID,
+        config_id: "968135252607876",
         response_type: "code",
         override_default_response_type: true,
         extras: {
