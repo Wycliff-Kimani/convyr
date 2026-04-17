@@ -27,8 +27,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-      {/* Desktop Sidebar */}
-      <aside className="w-60 bg-white border-r border-gray-100 flex flex-col h-full">
+    <aside className="w-60 bg-white border-r border-gray-100 flex flex-col h-full">
         <div className="px-6 py-4 border-b border-gray-100 h-16 flex items-center">
           <Link href="/overview">
             <Image
