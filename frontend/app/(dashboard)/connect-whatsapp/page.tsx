@@ -57,20 +57,22 @@ export default function ConnectWhatsAppPage() {
 
     try {
       window.FB.login(
-        async (response: any) => {
+        (response: any) => {
           console.log("Facebook login response:", response);
           if (response.authResponse?.code) {
-            try {
-              await api.connectWhatsApp(response.authResponse.code);
-              setStatus("success");
-              setTimeout(() => router.push("/overview"), 2000);
-            } catch (err: any) {
-              console.error("WhatsApp connect error:", err);
-              setStatus("error");
-              setErrorMessage(
-                err.message || "Failed to connect WhatsApp. Please try again.",
-              );
-            }
+            api
+              .connectWhatsApp(response.authResponse.code)
+              .then(() => {
+                setStatus("success");
+                setTimeout(() => router.push("/overview"), 2000);
+              })
+              .catch((err: any) => {
+                console.error("WhatsApp connect error:", err);
+                setStatus("error");
+                setErrorMessage(
+                  err.message || "Failed to connect WhatsApp. Please try again.",
+                );
+              });
           } else {
             console.error("Facebook login failed or was cancelled:", response);
             setStatus("error");
@@ -95,7 +97,7 @@ export default function ConnectWhatsAppPage() {
       setStatus("error");
       setErrorMessage(
         "An unexpected error occurred while launching Facebook Login. " +
-        "This may be caused by a browser extension replacing functionality. Try using another browser or incognito mode."
+          "This may be caused by a browser extension replacing functionality. Try using another browser or incognito mode.",
       );
     }
   };
