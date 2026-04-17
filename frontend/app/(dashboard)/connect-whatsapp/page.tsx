@@ -152,9 +152,19 @@ export default function ConnectWhatsAppPage() {
             <h1 className="text-xl font-bold text-[#0F172A] mb-2">
               Connecting...
             </h1>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-400 mb-6">
               Complete the steps in the Facebook popup to finish connecting your
               WhatsApp number.
+            </p>
+            <button
+              onClick={() => setStatus("idle")}
+              className="w-full bg-[#0F172A] hover:bg-[#1e293b] text-white py-3 rounded-xl text-sm font-semibold transition-colors mt-4"
+            >
+              Cancel
+            </button>
+            <p className="text-xs text-red-500 mt-4">
+              If the popup didn't appear, please check if your browser's popup
+              blocker or tracker prevention (e.g. Brave Shields) is blocking it.
             </p>
           </>
         )}
