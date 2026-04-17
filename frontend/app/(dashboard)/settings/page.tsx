@@ -218,7 +218,7 @@ export default function SettingsPage() {
             </label>
             <input
               type="tel"
-              placeholder="e.g. 0793790005"
+              placeholder="e.g. 0712345678"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#25D366] transition-colors"
