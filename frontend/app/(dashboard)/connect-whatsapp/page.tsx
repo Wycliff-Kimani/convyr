@@ -55,40 +55,49 @@ export default function ConnectWhatsAppPage() {
 
     setStatus("connecting");
 
-    window.FB.login(
-      async (response: any) => {
-        console.log("Facebook login response:", response);
-        if (response.authResponse?.code) {
-          try {
-            await api.connectWhatsApp(response.authResponse.code);
-            setStatus("success");
-            setTimeout(() => router.push("/overview"), 2000);
-          } catch (err: any) {
-            console.error("WhatsApp connect error:", err);
+    try {
+      window.FB.login(
+        async (response: any) => {
+          console.log("Facebook login response:", response);
+          if (response.authResponse?.code) {
+            try {
+              await api.connectWhatsApp(response.authResponse.code);
+              setStatus("success");
+              setTimeout(() => router.push("/overview"), 2000);
+            } catch (err: any) {
+              console.error("WhatsApp connect error:", err);
+              setStatus("error");
+              setErrorMessage(
+                err.message || "Failed to connect WhatsApp. Please try again.",
+              );
+            }
+          } else {
+            console.error("Facebook login failed or was cancelled:", response);
             setStatus("error");
             setErrorMessage(
-              err.message || "Failed to connect WhatsApp. Please try again.",
+              "WhatsApp connection was cancelled or failed. Please try again.",
             );
           }
-        } else {
-          console.error("Facebook login failed or was cancelled:", response);
-          setStatus("error");
-          setErrorMessage(
-            "WhatsApp connection was cancelled or failed. Please try again.",
-          );
-        }
-      },
-      {
-        config_id: "968135252607876",
-        response_type: "code",
-        override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: "",
-          sessionInfoVersion: "3",
         },
-      },
-    );
+        {
+          config_id: "968135252607876",
+          response_type: "code",
+          override_default_response_type: true,
+          extras: {
+            setup: {},
+            featureType: "",
+            sessionInfoVersion: "3",
+          },
+        },
+      );
+    } catch (error) {
+      console.error("Error calling FB.login:", error);
+      setStatus("error");
+      setErrorMessage(
+        "An unexpected error occurred while launching Facebook Login. " +
+        "This may be caused by a browser extension replacing functionality. Try using another browser or incognito mode."
+      );
+    }
   };
 
   return (
