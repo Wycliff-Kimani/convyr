@@ -57,18 +57,21 @@ export default function ConnectWhatsAppPage() {
 
     window.FB.login(
       async (response: any) => {
+        console.log("Facebook login response:", response);
         if (response.authResponse?.code) {
           try {
             await api.connectWhatsApp(response.authResponse.code);
             setStatus("success");
             setTimeout(() => router.push("/overview"), 2000);
           } catch (err: any) {
+            console.error("WhatsApp connect error:", err);
             setStatus("error");
             setErrorMessage(
               err.message || "Failed to connect WhatsApp. Please try again.",
             );
           }
         } else {
+          console.error("Facebook login failed or was cancelled:", response);
           setStatus("error");
           setErrorMessage(
             "WhatsApp connection was cancelled or failed. Please try again.",
