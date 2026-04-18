@@ -108,7 +108,8 @@ export default function ConversationsPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuJustOpenedRef = useRef(false);
-
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
   const isAtBottom = () => {
     const container = chatContainerRef.current;
     if (!container) return true;
@@ -324,6 +325,24 @@ export default function ConversationsPage() {
     setReplyingTo(msg);
     setActiveMessageMenu(null);
     setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleLongPressStart = (msgId: string) => {
+    longPressTriggeredRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      menuJustOpenedRef.current = true;
+      setActiveMessageMenu(msgId);
+      // Haptic feedback on supported devices
+      if (navigator.vibrate) navigator.vibrate(40);
+    }, 500);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   };
 
   const currentLabel = selectedContactData?.label || "new";
@@ -672,16 +691,16 @@ export default function ConversationsPage() {
                     key={msg.id}
                     className={`flex ${isOut ? "justify-end" : "justify-start"} group px-2`}
                   >
-                    {/* Inbound menu trigger — appears left of bubble on hover */}
+                    {/* Inbound menu trigger */}
                     {!isOut && !isDeleted && (
-                      <div className="flex items-end mb-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity relative self-end">
+                      <div className="flex items-end mb-1 mr-1 opacity-0 group-hover:opacity-100 md:transition-opacity relative self-end">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             menuJustOpenedRef.current = !showMenu;
                             setActiveMessageMenu(showMenu ? null : msg.id);
                           }}
-                          className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 bg-white/80 hover:bg-white rounded-full shadow-sm"
+                          className="w-7 h-7 md:w-6 md:h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 bg-white/80 hover:bg-white rounded-full shadow-sm"
                         >
                           <ChevronDown size={14} />
                         </button>
@@ -692,23 +711,23 @@ export default function ConversationsPage() {
                           >
                             <button
                               onClick={() => handleReplyTo(msg)}
-                              className="w-full text-left px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
                             >
-                              <Reply size={14} className="text-gray-400" />{" "}
+                              <Reply size={15} className="text-gray-400" />{" "}
                               Reply
                             </button>
                             <button
                               onClick={() => handleCopyMessage(msg.content)}
-                              className="w-full text-left px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
                             >
-                              <Copy size={14} className="text-gray-400" /> Copy
+                              <Copy size={15} className="text-gray-400" /> Copy
                             </button>
                             <button
                               onClick={() => handleStarMessage(msg.id)}
-                              className="w-full text-left px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
                             >
                               <Star
-                                size={14}
+                                size={15}
                                 className={
                                   isStarred
                                     ? "text-amber-400 fill-amber-400"
@@ -720,9 +739,9 @@ export default function ConversationsPage() {
                             <div className="border-t border-gray-100 my-1" />
                             <button
                               onClick={() => handleDeleteMessage(msg.id, false)}
-                              className="w-full text-left px-4 py-2 text-[13px] text-gray-500 hover:bg-gray-50 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-500 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
                             >
-                              <Trash2 size={14} className="text-gray-400" />{" "}
+                              <Trash2 size={15} className="text-gray-400" />{" "}
                               Delete for me
                             </button>
                           </div>
@@ -730,25 +749,37 @@ export default function ConversationsPage() {
                       </div>
                     )}
 
-                    {/* Bubble */}
+                    {/* Bubble — long press opens menu on mobile */}
                     <div
-                      className={`relative max-w-[72%] sm:max-w-md px-3 py-2 text-[14px] shadow-sm ${
+                      className={`relative max-w-[72%] sm:max-w-md px-3 py-2 text-[14px] shadow-sm select-none ${
                         isDeleted
                           ? "bg-gray-100 text-gray-400 italic rounded-xl"
                           : isOut
                             ? "bg-[#d9fdd3] text-[#111b21] rounded-tl-2xl rounded-tr-sm rounded-bl-2xl rounded-br-2xl"
                             : "bg-white text-[#111b21] rounded-tl-sm rounded-tr-2xl rounded-bl-2xl rounded-br-2xl"
-                      }`}
+                      } ${showMenu ? "opacity-80" : ""}`}
+                      onTouchStart={() =>
+                        !isDeleted && handleLongPressStart(msg.id)
+                      }
+                      onTouchEnd={handleLongPressEnd}
+                      onTouchMove={handleLongPressEnd}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        if (!isDeleted) {
+                          menuJustOpenedRef.current = true;
+                          setActiveMessageMenu(msg.id);
+                        }
+                      }}
                     >
                       {/* Bubble tail */}
                       {!isDeleted && isOut && (
-                        <span className="absolute -right-1.5 bottom-2 w-0 h-0 border-l-[6px] border-l-[#d9fdd3] border-t-[6px] border-t-transparent border-b-[0px]" />
+                        <span className="absolute -right-1.5 bottom-2 w-0 h-0 border-l-[6px] border-l-[#d9fdd3] border-t-[6px] border-t-transparent border-b-0" />
                       )}
                       {!isDeleted && !isOut && (
-                        <span className="absolute -left-1.5 bottom-2 w-0 h-0 border-r-[6px] border-r-white border-t-[6px] border-t-transparent border-b-[0px]" />
+                        <span className="absolute -left-1.5 bottom-2 w-0 h-0 border-r-[6px] border-r-white border-t-[6px] border-t-transparent border-b-0" />
                       )}
 
-                      <p className="leading-snug break-words">
+                      <p className="leading-snug break-all">
                         {isDeleted
                           ? "🚫 This message was deleted."
                           : msg.content}
@@ -775,16 +806,16 @@ export default function ConversationsPage() {
                       </div>
                     </div>
 
-                    {/* Outbound menu trigger — appears right of bubble on hover */}
+                    {/* Outbound menu trigger — always visible on mobile, hover on desktop */}
                     {isOut && !isDeleted && (
-                      <div className="flex items-end mb-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity relative self-end">
+                      <div className="flex items-end mb-1 ml-1 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity opacity-100 relative self-end">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             menuJustOpenedRef.current = !showMenu;
                             setActiveMessageMenu(showMenu ? null : msg.id);
                           }}
-                          className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 bg-white/80 hover:bg-white rounded-full shadow-sm"
+                          className="w-7 h-7 md:w-6 md:h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 bg-white/80 hover:bg-white rounded-full shadow-sm"
                         >
                           <ChevronDown size={14} />
                         </button>
@@ -795,23 +826,23 @@ export default function ConversationsPage() {
                           >
                             <button
                               onClick={() => handleReplyTo(msg)}
-                              className="w-full text-left px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
                             >
-                              <Reply size={14} className="text-gray-400" />{" "}
+                              <Reply size={15} className="text-gray-400" />{" "}
                               Reply
                             </button>
                             <button
                               onClick={() => handleCopyMessage(msg.content)}
-                              className="w-full text-left px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
                             >
-                              <Copy size={14} className="text-gray-400" /> Copy
+                              <Copy size={15} className="text-gray-400" /> Copy
                             </button>
                             <button
                               onClick={() => handleStarMessage(msg.id)}
-                              className="w-full text-left px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
                             >
                               <Star
-                                size={14}
+                                size={15}
                                 className={
                                   isStarred
                                     ? "text-amber-400 fill-amber-400"
@@ -823,16 +854,16 @@ export default function ConversationsPage() {
                             <div className="border-t border-gray-100 my-1" />
                             <button
                               onClick={() => handleDeleteMessage(msg.id, false)}
-                              className="w-full text-left px-4 py-2 text-[13px] text-gray-500 hover:bg-gray-50 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-500 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
                             >
-                              <Trash2 size={14} className="text-gray-400" />{" "}
+                              <Trash2 size={15} className="text-gray-400" />{" "}
                               Delete for me
                             </button>
                             <button
                               onClick={() => handleDeleteMessage(msg.id, true)}
-                              className="w-full text-left px-4 py-2 text-[13px] text-red-500 hover:bg-red-50 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-red-500 hover:bg-red-50 active:bg-red-100 flex items-center gap-3"
                             >
-                              <Trash2 size={14} className="text-red-400" />{" "}
+                              <Trash2 size={15} className="text-red-400" />{" "}
                               Delete for everyone
                             </button>
                           </div>
@@ -889,6 +920,106 @@ export default function ConversationsPage() {
           </>
         )}
       </div>
+      {/* Mobile bottom sheet — shows when message menu is active on small screens */}
+      {activeMessageMenu &&
+        (() => {
+          const activeMsg = selectedMessages.find(
+            (m) => m.id === activeMessageMenu,
+          );
+          if (!activeMsg) return null;
+          const isOut = activeMsg.direction === "outbound";
+          const isStarred = starredMessages.has(activeMsg.id);
+          return (
+            <div
+              className="md:hidden fixed inset-0 z-50 flex flex-col justify-end"
+              onClick={() => setActiveMessageMenu(null)}
+            >
+              <div className="absolute inset-0 bg-black/40" />
+              <div
+                className="relative bg-white rounded-t-2xl shadow-2xl pb-safe"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Handle */}
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                </div>
+                {/* Message preview */}
+                <div className="px-4 py-2 mx-4 mb-2 bg-gray-50 rounded-xl border-l-4 border-[#25D366]">
+                  <p className="text-[12px] text-gray-500 truncate">
+                    {activeMsg.content}
+                  </p>
+                </div>
+                {/* Actions */}
+                <div className="px-2 pb-6">
+                  <button
+                    onClick={() => {
+                      handleReplyTo(activeMsg);
+                      setActiveMessageMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-4 text-[15px] text-gray-800 flex items-center gap-4 active:bg-gray-50 rounded-xl"
+                  >
+                    <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                      <Reply size={17} className="text-gray-600" />
+                    </div>{" "}
+                    Reply
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleCopyMessage(activeMsg.content);
+                      setActiveMessageMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-4 text-[15px] text-gray-800 flex items-center gap-4 active:bg-gray-50 rounded-xl"
+                  >
+                    <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                      <Copy size={17} className="text-gray-600" />
+                    </div>{" "}
+                    Copy
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleStarMessage(activeMsg.id);
+                      setActiveMessageMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-4 text-[15px] text-gray-800 flex items-center gap-4 active:bg-gray-50 rounded-xl"
+                  >
+                    <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                      <Star
+                        size={17}
+                        className={
+                          isStarred
+                            ? "text-amber-400 fill-amber-400"
+                            : "text-gray-600"
+                        }
+                      />
+                    </div>
+                    {isStarred ? "Unstar" : "Star"}
+                  </button>
+                  <div className="h-px bg-gray-100 mx-4 my-1" />
+                  <button
+                    onClick={() => handleDeleteMessage(activeMsg.id, false)}
+                    className="w-full text-left px-4 py-4 text-[15px] text-gray-500 flex items-center gap-4 active:bg-gray-50 rounded-xl"
+                  >
+                    <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                      <Trash2 size={17} className="text-gray-500" />
+                    </div>{" "}
+                    Delete for me
+                  </button>
+                  {isOut && (
+                    <button
+                      onClick={() => handleDeleteMessage(activeMsg.id, true)}
+                      className="w-full text-left px-4 py-4 text-[15px] text-red-500 flex items-center gap-4 active:bg-red-50 rounded-xl"
+                    >
+                      <div className="w-9 h-9 bg-red-50 rounded-full flex items-center justify-center shrink-0">
+                        <Trash2 size={17} className="text-red-500" />
+                      </div>{" "}
+                      Delete for everyone
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }
