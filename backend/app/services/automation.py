@@ -7,16 +7,6 @@ supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_K
 
 COOLDOWN_HOURS = 4
 
-PRIORITY_KEYWORDS = [
-    "order", "buy", "price", "delivery", "payment", "mpesa",
-    "help", "complaint", "hours", "thank", "bye"
-]
-
-GREETING_KEYWORDS = [
-    "hi", "hello", "hey", "morning", "afternoon",
-    "evening", "habari", "mambo", "niaje"
-]
-
 
 def get_reply_hash(reply_text: str) -> str:
     return hashlib.md5(reply_text.strip().lower().encode()).hexdigest()
@@ -55,22 +45,17 @@ async def get_matching_automation(message_text: str, contact_id: str, business_i
 
     for rule in automations:
         if rule["trigger_type"] == "contains_keyword" and rule["keyword"]:
-            keyword_map[rule["keyword"]] = rule["response"]
+            keyword_map[rule["keyword"].lower()] = rule["response"]
         elif rule["trigger_type"] == "any_message":
             any_message_response = rule["response"]
 
     matched_reply = None
 
-    for keyword in PRIORITY_KEYWORDS:
-        if keyword in text_lower and keyword in keyword_map:
-            matched_reply = keyword_map[keyword]
+    # Match directly against database keywords — no hardcoded lists
+    for keyword, response in keyword_map.items():
+        if keyword in text_lower:
+            matched_reply = response
             break
-
-    if not matched_reply:
-        for keyword in GREETING_KEYWORDS:
-            if keyword in text_lower and keyword in keyword_map:
-                matched_reply = keyword_map[keyword]
-                break
 
     if not matched_reply and any_message_response:
         matched_reply = any_message_response
