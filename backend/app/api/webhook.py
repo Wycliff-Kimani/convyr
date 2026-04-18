@@ -22,6 +22,10 @@ RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_MAX = 20
 _rate_limit_store: dict = defaultdict(list)
 
+# Fallback cooldown: only send fallback once every 120 seconds per contact
+FALLBACK_COOLDOWN_SECONDS = 120
+_fallback_sent_at: dict = {}  # contact_id -> timestamp
+
 
 def is_rate_limited(identifier: str) -> bool:
     now = time.time()
@@ -33,6 +37,17 @@ def is_rate_limited(identifier: str) -> bool:
         return True
     _rate_limit_store[identifier].append(now)
     return False
+
+
+def fallback_recently_sent(contact_id: str) -> bool:
+    last_sent = _fallback_sent_at.get(contact_id)
+    if last_sent and (time.time() - last_sent) < FALLBACK_COOLDOWN_SECONDS:
+        return True
+    return False
+
+
+def record_fallback_sent(contact_id: str):
+    _fallback_sent_at[contact_id] = time.time()
 
 
 @router.get("/webhook", response_class=PlainTextResponse)
@@ -103,9 +118,13 @@ async def receive_webhook(request: Request):
 
             reply = await get_matching_automation(text, contact_id, business_id)
 
-            # Fallback fires every time — no cooldown on it
+            # Fallback: only send if no automation matched AND not sent recently
             if not reply:
-                reply = FALLBACK_REPLY
+                if not fallback_recently_sent(contact_id):
+                    reply = FALLBACK_REPLY
+                    record_fallback_sent(contact_id)
+                else:
+                    logger.info(f"Fallback suppressed for {sender} — sent within last {FALLBACK_COOLDOWN_SECONDS}s")
 
             if reply:
                 await send_typing_indicator(msg_id)
