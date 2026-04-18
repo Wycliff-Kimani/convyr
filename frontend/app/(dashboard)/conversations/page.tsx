@@ -84,6 +84,11 @@ export default function ConversationsPage() {
   };
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const contactPhone = params.get("contact");
+    if (contactPhone) {
+      setSelectedContact(contactPhone);
+    }
     fetchMessages();
     fetchContacts();
   }, []);

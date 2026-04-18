@@ -93,28 +93,28 @@ export default function OverviewPage() {
       action: () => router.push("/contacts"),
     },
     {
-      label: "Urgent Replies",
+      label: "Waiting for Reply",
       value: loading ? "..." : needsReply.length,
-      sub: "Waiting for you",
+      sub: "Needs your attention",
       icon: MessageSquare,
       color: "bg-orange-50 text-orange-500",
       action: () => router.push("/conversations"),
     },
     {
-      label: "Auto-replies",
-      value: loading ? "..." : outboundMessages.length,
-      sub: `~${estimatedHoursSaved}h saved`,
+      label: "Orders Tracked",
+      value: loading ? "..." : messages.filter(m => m.content.toLowerCase().includes("order") || m.content.toLowerCase().includes("buy")).length,
+      sub: "Potential sales",
+      icon: TrendingUp,
+      color: "bg-purple-50 text-purple-500",
+      action: () => router.push("/conversations"),
+    },
+    {
+      label: "Time Recouped",
+      value: loading ? "..." : `~${estimatedHoursSaved}h`,
+      sub: "Work handled by Convyr",
       icon: Zap,
       color: "bg-green-50 text-[#25D366]",
       action: () => router.push("/automations"),
-    },
-    {
-      label: "Success Rate",
-      value: loading ? "..." : `${responseRate}%`,
-      sub: "Automatic handling",
-      icon: TrendingUp,
-      color: "bg-purple-50 text-purple-500",
-      action: () => router.push("/analytics"),
     },
   ];
 
@@ -154,7 +154,7 @@ export default function OverviewPage() {
             {loading
               ? "Loading your stats..."
               : outboundMessages.length > 0
-                ? `Convyr is working for you. Today your WhatsApp handled ${inboundMessages.length} messages and saved ~${estimatedHoursSaved} hours of manual work.`
+                ? `Convyr saved you ~${estimatedHoursSaved} hours today. ${needsReply.length} ${needsReply.length === 1 ? "customer is" : "customers are"} waiting for a reply.`
                 : "Here's what's happening with your WhatsApp automation today."}
           </p>
         </div>
@@ -300,6 +300,20 @@ export default function OverviewPage() {
                     new Date(message.created_at).getTime() <
                     60000,
               );
+
+              // Simple tag logic based on keywords
+              const lowerMsg = message.content.toLowerCase();
+              const tag =
+                lowerMsg.includes("order") || lowerMsg.includes("buy")
+                  ? "Potential Order"
+                  : lowerMsg.includes("price") ||
+                      lowerMsg.includes("cost") ||
+                      lowerMsg.includes("how much")
+                    ? "Price Inquiry"
+                    : lowerMsg.includes("pay") || lowerMsg.includes("mpesa")
+                      ? "Payment"
+                      : null;
+
               return (
                 <div
                   key={message.id}
@@ -320,6 +334,11 @@ export default function OverviewPage() {
                         >
                           {labelKey}
                         </span>
+                        {tag && (
+                          <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-yellow-50 text-yellow-700 border border-yellow-100 italic">
+                            {tag}
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5 truncate max-w-50 sm:max-w-sm italic">
                         "{message.content}"
@@ -370,6 +389,28 @@ export default function OverviewPage() {
           </div>
         )}
       </div>
+
+      {/* Coach / Smart Suggestion */}
+      {!loading && outboundMessages.length > 10 && (
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white overflow-hidden relative group">
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap size={18} className="text-yellow-300 fill-yellow-300" />
+              <h3 className="text-sm font-bold uppercase tracking-wider">Smart Suggestion</h3>
+            </div>
+            <p className="text-lg font-medium max-w-xl">
+              "You received several messages about 'price' but have no automatic price list. Create a rule to handle these instantly."
+            </p>
+            <button
+              onClick={() => router.push("/automations")}
+              className="mt-4 bg-white text-blue-600 px-6 py-2 rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors flex items-center gap-2"
+            >
+              Configure Pricing Rule <ArrowRight size={16} />
+            </button>
+          </div>
+          <div className="absolute -right-8 -top-8 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all"></div>
+        </div>
+      )}
     </div>
   );
 }
