@@ -27,27 +27,29 @@ class LoginRequest(BaseModel):
 
 @router.post("/auth/register", status_code=201)
 async def register(data: RegisterRequest):
+    email = data.email.lower().strip()
+
     # Check if email already exists in users
-    existing_user = supabase.table("users").select("id").eq("email", data.email).execute()
+    existing_user = supabase.table("users").select("id").eq("email", email).execute()
     if existing_user.data:
         raise HTTPException(status_code=400, detail="Email already registered.")
 
     # Check if email already exists in businesses
-    existing_business = supabase.table("businesses").select("id").eq("email", data.email).execute()
+    existing_business = supabase.table("businesses").select("id").eq("email", email).execute()
     if existing_business.data:
         raise HTTPException(status_code=400, detail="Email already registered.")
 
     # Create business
     business = supabase.table("businesses").insert({
         "name": data.business_name,
-        "email": data.email,
+        "email": email,
     }).execute()
     business_id = business.data[0]["id"]
 
     # Create user
     user = supabase.table("users").insert({
         "business_id": business_id,
-        "email": data.email,
+        "email": email,
         "hashed_password": hash_password(data.password),
         "full_name": data.full_name,
         "role": "owner",
@@ -60,7 +62,7 @@ async def register(data: RegisterRequest):
         "token_type": "bearer",
         "user": {
             "id": user.data[0]["id"],
-            "email": data.email,
+            "email": email,
             "full_name": data.full_name,
             "business_id": business_id,
         }
@@ -69,7 +71,9 @@ async def register(data: RegisterRequest):
 
 @router.post("/auth/login")
 async def login(data: LoginRequest):
-    result = supabase.table("users").select("*").eq("email", data.email).execute()
+    email = data.email.lower().strip()
+
+    result = supabase.table("users").select("*").eq("email", email).execute()
     if not result.data:
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
