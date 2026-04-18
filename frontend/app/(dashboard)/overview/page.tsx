@@ -102,7 +102,13 @@ export default function OverviewPage() {
     },
     {
       label: "Orders Tracked",
-      value: loading ? "..." : messages.filter(m => m.content.toLowerCase().includes("order") || m.content.toLowerCase().includes("buy")).length,
+      value: loading
+        ? "..."
+        : messages.filter(
+            (m) =>
+              m.content.toLowerCase().includes("order") ||
+              m.content.toLowerCase().includes("buy"),
+          ).length,
       sub: "Potential sales",
       icon: TrendingUp,
       color: "bg-purple-50 text-purple-500",
@@ -392,14 +398,17 @@ export default function OverviewPage() {
 
       {/* Coach / Smart Suggestion */}
       {!loading && outboundMessages.length > 10 && (
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white overflow-hidden relative group">
+        <div className="bg-linear-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white overflow-hidden relative group">
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-2">
               <Zap size={18} className="text-yellow-300 fill-yellow-300" />
-              <h3 className="text-sm font-bold uppercase tracking-wider">Smart Suggestion</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider">
+                Smart Suggestion
+              </h3>
             </div>
             <p className="text-lg font-medium max-w-xl">
-              "You received several messages about 'price' but have no automatic price list. Create a rule to handle these instantly."
+              "You received several messages about 'price' but have no automatic
+              price list. Create a rule to handle these instantly."
             </p>
             <button
               onClick={() => router.push("/automations")}
