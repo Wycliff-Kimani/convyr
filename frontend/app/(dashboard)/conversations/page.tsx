@@ -9,9 +9,11 @@ import {
   Trash2,
   MoreVertical,
   ChevronDown,
+  Plus,
+  X,
 } from "lucide-react";
 
-const LABEL_CONFIG: Record<
+const LABEL_CONFIG: Record
   string,
   { label: string; color: string; bg: string }
 > = {
@@ -37,14 +39,17 @@ export default function ConversationsPage() {
   const [selectedContact, setSelectedContact] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
-  const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(
-    null,
-  );
+  const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
   const [labelMenuOpen, setLabelMenuOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesText, setNotesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
+  const [newConvoOpen, setNewConvoOpen] = useState(false);
+  const [newConvoPhone, setNewConvoPhone] = useState("");
+  const [newConvoMessage, setNewConvoMessage] = useState("");
+  const [sendingNew, setSendingNew] = useState(false);
+  const [newConvoError, setNewConvoError] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -159,6 +164,34 @@ export default function ConversationsPage() {
     }
   };
 
+  const handleStartNewConversation = async () => {
+    if (!newConvoPhone.trim() || !newConvoMessage.trim()) {
+      setNewConvoError("Both phone number and message are required.");
+      return;
+    }
+    setSendingNew(true);
+    setNewConvoError("");
+    try {
+      // Normalize phone number — strip leading 0 and add 254
+      let phone = newConvoPhone.trim().replace(/\s+/g, "");
+      if (phone.startsWith("0")) phone = "254" + phone.slice(1);
+      if (phone.startsWith("+")) phone = phone.slice(1);
+
+      await api.sendMessage(phone, newConvoMessage);
+      setNewConvoOpen(false);
+      setNewConvoPhone("");
+      setNewConvoMessage("");
+      setSelectedContact(phone);
+      await fetchMessages(true);
+    } catch (err: any) {
+      setNewConvoError(
+        err.message || "Failed to send. Make sure the number is correct."
+      );
+    } finally {
+      setSendingNew(false);
+    }
+  };
+
   const handleDeleteMessage = async (
     messageId: string,
     deleteForEveryone: boolean,
@@ -213,13 +246,22 @@ export default function ConversationsPage() {
       <div
         className={`${selectedContact ? "hidden md:flex" : "flex"} w-full md:w-72 bg-white border-r border-gray-100 flex-col h-full overflow-hidden`}
       >
-        <div className="px-4 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-[#0F172A]">
-            Conversations
-          </h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {contactList.length} contacts
-          </p>
+        <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-[#0F172A]">
+              Conversations
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {contactList.length} contacts
+            </p>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setNewConvoOpen(true); }}
+            className="w-8 h-8 rounded-full bg-[#25D366] hover:bg-[#128C7E] flex items-center justify-center transition-colors"
+            title="Start new conversation"
+          >
+            <Plus size={16} className="text-white" />
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {loading ? (
@@ -269,6 +311,58 @@ export default function ConversationsPage() {
         </div>
       </div>
 
+      {/* New Conversation Modal */}
+      {newConvoOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          onClick={() => setNewConvoOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-[#0F172A]">New Conversation</h3>
+              <button onClick={() => setNewConvoOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Phone Number</label>
+                <input
+                  type="tel"
+                  placeholder="e.g. 0712345678 or 254712345678"
+                  value={newConvoPhone}
+                  onChange={(e) => setNewConvoPhone(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#25D366] transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Message</label>
+                <textarea
+                  placeholder="Type your message..."
+                  value={newConvoMessage}
+                  onChange={(e) => setNewConvoMessage(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#25D366] transition-colors resize-none"
+                  rows={3}
+                />
+              </div>
+              {newConvoError && (
+                <p className="text-xs text-red-500">{newConvoError}</p>
+              )}
+              <button
+                onClick={handleStartNewConversation}
+                disabled={sendingNew || !newConvoPhone.trim() || !newConvoMessage.trim()}
+                className="bg-[#25D366] hover:bg-[#128C7E] disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+              >
+                {sendingNew ? "Sending..." : "Send Message"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chat Area */}
       <div
         className={`${selectedContact ? "flex" : "hidden md:flex"} flex-1 flex-col bg-white md:rounded-2xl border border-gray-100 overflow-hidden`}
@@ -299,7 +393,6 @@ export default function ConversationsPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Notes button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -317,7 +410,6 @@ export default function ConversationsPage() {
                   )}
                 </button>
 
-                {/* Label dropdown */}
                 <div className="relative">
                   <button
                     onClick={(e) => {
