@@ -3,6 +3,7 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 import logging
 import asyncio
 import hashlib
+import hmac
 import time
 from collections import defaultdict
 from supabase import create_client
@@ -50,6 +51,31 @@ def record_fallback_sent(contact_id: str):
     _fallback_sent_at[contact_id] = time.time()
 
 
+def verify_meta_signature(payload_bytes: bytes, signature_header: str | None) -> bool:
+    """
+    Verify the request came from Meta using X-Hub-Signature-256.
+    Meta signs the raw request body with META_APP_SECRET via HMAC-SHA256.
+    If META_APP_SECRET is not set, skip verification (safe for local dev).
+    """
+    if not settings.META_APP_SECRET:
+        logger.warning("META_APP_SECRET not set — skipping signature verification")
+        return True
+
+    if not signature_header or not signature_header.startswith("sha256="):
+        logger.warning("Missing or malformed X-Hub-Signature-256 header")
+        return False
+
+    expected = hmac.new(
+        settings.META_APP_SECRET.encode("utf-8"),
+        payload_bytes,
+        hashlib.sha256
+    ).hexdigest()
+
+    received = signature_header.removeprefix("sha256=")
+
+    return hmac.compare_digest(expected, received)
+
+
 @router.get("/webhook", response_class=PlainTextResponse)
 async def verify_webhook(
     hub_mode: str = Query(None, alias="hub.mode"),
@@ -64,12 +90,22 @@ async def verify_webhook(
 
 @router.post("/webhook", status_code=200)
 async def receive_webhook(request: Request):
+    # ── Signature verification ──────────────────────────────────────────────
+    raw_body = await request.body()
+    signature = request.headers.get("X-Hub-Signature-256")
+
+    if not verify_meta_signature(raw_body, signature):
+        logger.warning("Webhook signature verification failed — request rejected")
+        raise HTTPException(status_code=403, detail="Invalid signature")
+
+    # ── Rate limiting ───────────────────────────────────────────────────────
     client_ip = request.client.host if request.client else "unknown"
     if is_rate_limited(client_ip):
         logger.warning(f"Rate limit exceeded for IP: {client_ip}")
         return {"status": "ok"}
 
-    payload = await request.json()
+    import json
+    payload = json.loads(raw_body)
     logger.info(f"Webhook received: {payload}")
 
     try:
@@ -159,7 +195,6 @@ async def data_deletion_callback(request: Request):
             raise HTTPException(status_code=400, detail="Missing signed_request")
 
         import base64
-        import hmac
         import json
 
         parts = signed_request.split(".")
