@@ -107,6 +107,7 @@ export default function ConversationsPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const menuJustOpenedRef = useRef(false);
 
   const isAtBottom = () => {
     const container = chatContainerRef.current;
@@ -167,7 +168,11 @@ export default function ConversationsPage() {
   }, [loading]);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = () => {
+      if (menuJustOpenedRef.current) {
+        menuJustOpenedRef.current = false;
+        return;
+      }
       setActiveMessageMenu(null);
       setLabelMenuOpen(false);
     };
@@ -671,9 +676,9 @@ export default function ConversationsPage() {
                     {!isOut && !isDeleted && (
                       <div className="flex items-end mb-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity relative self-end">
                         <button
-                          onMouseDown={(e) => {
+                          onClick={(e) => {
                             e.stopPropagation();
-                            e.preventDefault();
+                            menuJustOpenedRef.current = !showMenu;
                             setActiveMessageMenu(showMenu ? null : msg.id);
                           }}
                           className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 bg-white/80 hover:bg-white rounded-full shadow-sm"
@@ -683,7 +688,7 @@ export default function ConversationsPage() {
                         {showMenu && (
                           <div
                             className="absolute bottom-8 left-0 bg-white rounded-xl shadow-2xl z-50 min-w-44 py-1.5 border border-gray-100"
-                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <button
                               onClick={() => handleReplyTo(msg)}
@@ -774,9 +779,9 @@ export default function ConversationsPage() {
                     {isOut && !isDeleted && (
                       <div className="flex items-end mb-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity relative self-end">
                         <button
-                          onMouseDown={(e) => {
+                          onClick={(e) => {
                             e.stopPropagation();
-                            e.preventDefault();
+                            menuJustOpenedRef.current = !showMenu;
                             setActiveMessageMenu(showMenu ? null : msg.id);
                           }}
                           className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 bg-white/80 hover:bg-white rounded-full shadow-sm"
@@ -786,7 +791,7 @@ export default function ConversationsPage() {
                         {showMenu && (
                           <div
                             className="absolute bottom-8 right-0 bg-white rounded-xl shadow-2xl z-50 min-w-44 py-1.5 border border-gray-100"
-                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <button
                               onClick={() => handleReplyTo(msg)}
