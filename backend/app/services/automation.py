@@ -31,7 +31,6 @@ async def record_reply_sent(contact_id: str, business_id: str, reply_hash: str):
 
 
 async def get_matching_automation(message_text: str, contact_id: str, business_id: str) -> str | None:
-    # Get active automations for THIS business only
     result = supabase.table("automations").select("*").eq("is_active", True).eq("business_id", business_id).execute()
     automations = result.data
 
@@ -51,7 +50,6 @@ async def get_matching_automation(message_text: str, contact_id: str, business_i
 
     matched_reply = None
 
-    # Match directly against database keywords — no hardcoded lists
     for keyword, response in keyword_map.items():
         if keyword in text_lower:
             matched_reply = response

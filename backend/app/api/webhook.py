@@ -18,7 +18,6 @@ supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_K
 
 FALLBACK_REPLY = "Thanks for reaching out! Our team will get back to you shortly. 🙏"
 
-# Rate limiting: max 20 webhook requests per IP per 60 seconds
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_MAX = 20
 _rate_limit_store: dict = defaultdict(list)
@@ -50,7 +49,6 @@ async def verify_webhook(
 
 @router.post("/webhook", status_code=200)
 async def receive_webhook(request: Request):
-    # Rate limiting by IP
     client_ip = request.client.host if request.client else "unknown"
     if is_rate_limited(client_ip):
         logger.warning(f"Rate limit exceeded for IP: {client_ip}")
@@ -73,7 +71,6 @@ async def receive_webhook(request: Request):
         msg_id = message.get("id")
         msg_type = message.get("type")
 
-        # Rate limiting by sender phone number
         if sender and is_rate_limited(f"sender:{sender}"):
             logger.warning(f"Rate limit exceeded for sender: {sender}")
             return {"status": "ok"}
@@ -82,21 +79,18 @@ async def receive_webhook(request: Request):
             text = message["text"]["body"]
             logger.info(f"Message from {sender}: {text}")
 
-            # Look up business by phone_number_id from webhook payload
             phone_number_id = value.get("metadata", {}).get("phone_number_id")
             business_result = supabase.table("businesses").select("id").eq(
                 "whatsapp_phone_number_id", phone_number_id
             ).execute()
             business_id = business_result.data[0]["id"] if business_result.data else None
 
-            # Upsert contact with business_id
             contact_result = supabase.table("contacts").upsert(
                 {"phone_number": sender, "business_id": business_id},
                 on_conflict="phone_number"
             ).execute()
             contact_id = contact_result.data[0]["id"]
 
-            # Save inbound message
             supabase.table("messages").insert({
                 "whatsapp_message_id": msg_id,
                 "contact_id": contact_id,
@@ -107,27 +101,18 @@ async def receive_webhook(request: Request):
                 "status": "received"
             }).execute()
 
-            # Get matching automation reply (cooldown handled inside)
             reply = await get_matching_automation(text, contact_id, business_id)
 
-            # If no automation matched, check if fallback was already sent recently
+            # Fallback fires every time — no cooldown on it
             if not reply:
-                from app.services.automation import get_reply_hash, was_reply_sent_recently, record_reply_sent
-                fallback_hash = get_reply_hash(FALLBACK_REPLY)
-                fallback_sent = await was_reply_sent_recently(contact_id, fallback_hash)
-                if not fallback_sent:
-                    reply = FALLBACK_REPLY
-                    await record_reply_sent(contact_id, business_id, fallback_hash)
+                reply = FALLBACK_REPLY
 
             if reply:
-                # Show typing indicator
                 await send_typing_indicator(msg_id)
                 await asyncio.sleep(1)
 
-                # Send reply
                 await send_whatsapp_message(to=sender, text=reply)
 
-                # Save outbound reply
                 supabase.table("messages").insert({
                     "contact_id": contact_id,
                     "business_id": business_id,
@@ -137,7 +122,7 @@ async def receive_webhook(request: Request):
                     "status": "sent"
                 }).execute()
             else:
-                logger.info(f"No reply sent to {sender} — all matching replies already sent within cooldown window")
+                logger.info(f"No reply sent to {sender}")
 
     except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
@@ -147,11 +132,6 @@ async def receive_webhook(request: Request):
 
 @router.post("/webhook/data-deletion")
 async def data_deletion_callback(request: Request):
-    """
-    Meta requires this endpoint to handle user data deletion requests.
-    When a user removes your app from their Facebook account, Meta sends
-    a signed request here. We delete all associated data from our database.
-    """
     try:
         payload = await request.json()
         signed_request = payload.get("signed_request")
@@ -159,7 +139,6 @@ async def data_deletion_callback(request: Request):
         if not signed_request:
             raise HTTPException(status_code=400, detail="Missing signed_request")
 
-        # Decode the signed request from Meta
         import base64
         import hmac
         import json
@@ -170,7 +149,6 @@ async def data_deletion_callback(request: Request):
 
         encoded_sig, payload_b64 = parts
 
-        # Pad base64 string if needed
         padding = 4 - len(payload_b64) % 4
         if padding != 4:
             payload_b64 += "=" * padding
@@ -178,7 +156,6 @@ async def data_deletion_callback(request: Request):
         decoded_payload = base64.urlsafe_b64decode(payload_b64)
         data = json.loads(decoded_payload)
 
-        # Verify the signature using the app secret
         expected_sig = hmac.new(
             settings.META_APP_SECRET.encode("utf-8"),
             payload_b64.encode("utf-8"),
@@ -193,20 +170,16 @@ async def data_deletion_callback(request: Request):
         user_id = data.get("user_id")
         logger.info(f"Data deletion request received for Facebook user_id: {user_id}")
 
-        # Delete the business and all associated data for this user
         business_result = supabase.table("businesses").select("id").eq(
             "facebook_user_id", user_id
         ).execute()
 
         if business_result.data:
             business_id = business_result.data[0]["id"]
-
-            # Delete in order: messages → contacts → automations → business
             supabase.table("messages").delete().eq("business_id", business_id).execute()
             supabase.table("contacts").delete().eq("business_id", business_id).execute()
             supabase.table("automations").delete().eq("business_id", business_id).execute()
             supabase.table("businesses").delete().eq("id", business_id).execute()
-
             logger.info(f"Deleted all data for business_id: {business_id}")
 
         confirmation_code = hashlib.sha256(f"{user_id}-deleted".encode()).hexdigest()[:16]
