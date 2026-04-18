@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     WHATSAPP_VERIFY_TOKEN: str
     META_APP_SECRET: str = ""
 
+    ANTHROPIC_API_KEY: str = ""
+
     # ========================
     # Supabase
     # ========================

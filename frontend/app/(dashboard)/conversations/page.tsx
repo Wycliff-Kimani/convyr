@@ -15,6 +15,7 @@ import {
   Star,
   ChevronRight,
   Search,
+  Sparkles,
 } from "lucide-react";
 
 const LABEL_CONFIG: Record<
@@ -104,6 +105,7 @@ export default function ConversationsPage() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -325,6 +327,24 @@ export default function ConversationsPage() {
     setReplyingTo(msg);
     setActiveMessageMenu(null);
     setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleSuggestReply = async () => {
+    if (!selectedContact || selectedMessages.length === 0) return;
+    setSuggesting(true);
+    try {
+      const context = selectedMessages.slice(-10).map((m) => ({
+        direction: m.direction,
+        content: m.content,
+      }));
+      const res = await api.suggestReply(context);
+      setReplyText(res.suggestion);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } catch (err) {
+      console.error("Failed to get suggestion:", err);
+    } finally {
+      setSuggesting(false);
+    }
   };
 
   const handleLongPressStart = (msgId: string) => {
@@ -898,6 +918,19 @@ export default function ConversationsPage() {
 
             {/* Input bar */}
             <div className="px-3 py-3 bg-[#f0f2f5] border-t border-gray-200 flex items-center gap-2">
+              {/* AI Suggest button */}
+              <button
+                onClick={handleSuggestReply}
+                disabled={suggesting || selectedMessages.length === 0}
+                title="AI suggested reply"
+                className="w-10 h-10 bg-white hover:bg-violet-50 disabled:opacity-40 border border-gray-200 text-violet-500 rounded-full flex items-center justify-center transition-colors shadow-sm shrink-0"
+              >
+                {suggesting ? (
+                  <span className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Sparkles size={16} />
+                )}
+              </button>
               <div className="flex-1 bg-white rounded-full px-4 py-2.5 flex items-center border border-gray-200 shadow-sm">
                 <input
                   ref={inputRef}

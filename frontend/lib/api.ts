@@ -113,6 +113,13 @@ export const api = {
   deleteAutomation: (id: string) =>
     apiRequest(`/automations/${id}`, { method: "DELETE" }),
 
+  // AI
+  suggestReply: (messages: { direction: string; content: string }[]) =>
+    apiRequest<{ suggestion: string }>("/suggest-reply", {
+      method: "POST",
+      body: JSON.stringify({ messages }),
+    }),
+
   // Payments
   initiatePayment: (phone_number: string, plan: string) =>
     apiRequest("/payments/initiate", {

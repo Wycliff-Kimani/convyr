@@ -12,6 +12,50 @@ security = HTTPBearer()
 
 supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
+# Default automation rules seeded for every new business on signup
+DEFAULT_AUTOMATIONS = [
+    {
+        "trigger_type": "contains_keyword",
+        "keyword": "hi",
+        "response": "Hi there! 👋 Welcome. How can we help you today?",
+        "is_active": True,
+    },
+    {
+        "trigger_type": "contains_keyword",
+        "keyword": "hello",
+        "response": "Hello! 😊 Thanks for reaching out. What can we do for you?",
+        "is_active": True,
+    },
+    {
+        "trigger_type": "contains_keyword",
+        "keyword": "price",
+        "response": "Hi! For pricing details, please share the item name or code and we'll get back to you with full details. 🙏",
+        "is_active": True,
+    },
+    {
+        "trigger_type": "contains_keyword",
+        "keyword": "order",
+        "response": "Thank you for your interest! 🛒 Please share the item numbers you'd like to order and we'll confirm availability and delivery.",
+        "is_active": True,
+    },
+    {
+        "trigger_type": "contains_keyword",
+        "keyword": "delivery",
+        "response": "We deliver! 🚚 Please share your location and we'll provide delivery charges and estimated time.",
+        "is_active": True,
+    },
+]
+
+
+def seed_default_automations(business_id: str):
+    """Insert default automation rules for a newly registered business."""
+    try:
+        rules = [{"business_id": business_id, **rule} for rule in DEFAULT_AUTOMATIONS]
+        supabase.table("automations").insert(rules).execute()
+        logger.info(f"Seeded {len(rules)} default automations for business {business_id}")
+    except Exception as e:
+        logger.error(f"Failed to seed default automations for {business_id}: {str(e)}")
+
 
 class RegisterRequest(BaseModel):
     business_name: str
@@ -45,6 +89,9 @@ async def register(data: RegisterRequest):
         "email": email,
     }).execute()
     business_id = business.data[0]["id"]
+
+    # Seed default automation rules for this new business
+    seed_default_automations(business_id)
 
     # Create user
     user = supabase.table("users").insert({

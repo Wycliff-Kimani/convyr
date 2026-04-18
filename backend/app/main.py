@@ -10,6 +10,7 @@ from app.api.messages import router as messages_router
 from app.api.automations import router as automations_router
 from app.api.payments import router as payments_router
 from app.api.businesses import router as businesses_router
+from app.api.suggest import router as suggest_router
 
 
 @asynccontextmanager
@@ -46,6 +47,7 @@ app.include_router(messages_router, prefix=API_PREFIX, tags=["Messages"])
 app.include_router(automations_router, prefix=API_PREFIX, tags=["Automations"])
 app.include_router(payments_router, prefix=API_PREFIX, tags=["Payments"])
 app.include_router(businesses_router, prefix=API_PREFIX, tags=["Business"])
+app.include_router(suggest_router, prefix=API_PREFIX, tags=["AI"])
 
 
 @app.get("/health", tags=["Health"])
