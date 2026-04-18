@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 
-const LABEL_CONFIG: Record
+const LABEL_CONFIG: Record<
   string,
   { label: string; color: string; bg: string }
 > = {
@@ -426,7 +426,7 @@ export default function ConversationsPage() {
                       className="absolute right-0 top-8 bg-white border border-gray-100 rounded-xl shadow-lg z-50 min-w-40 py-1"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {Object.entries(LABEL_CONFIG).map(([key, cfg]) => (
+                      {(Object.entries(LABEL_CONFIG) as [string, { label: string; color: string; bg: string }][]).map(([key, cfg]) => (
                         <button
                           key={key}
                           onClick={() => handleLabelChange(key)}
