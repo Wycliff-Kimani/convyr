@@ -3,6 +3,8 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 import logging
 import asyncio
 import hashlib
+import time
+from collections import defaultdict
 from supabase import create_client
 
 from app.config import settings
@@ -15,6 +17,23 @@ router = APIRouter()
 supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
 FALLBACK_REPLY = "Thanks for reaching out! Our team will get back to you shortly. 🙏"
+
+# Rate limiting: max 20 webhook requests per IP per 60 seconds
+RATE_LIMIT_WINDOW = 60
+RATE_LIMIT_MAX = 20
+_rate_limit_store: dict = defaultdict(list)
+
+
+def is_rate_limited(identifier: str) -> bool:
+    now = time.time()
+    window_start = now - RATE_LIMIT_WINDOW
+    _rate_limit_store[identifier] = [
+        t for t in _rate_limit_store[identifier] if t > window_start
+    ]
+    if len(_rate_limit_store[identifier]) >= RATE_LIMIT_MAX:
+        return True
+    _rate_limit_store[identifier].append(now)
+    return False
 
 
 @router.get("/webhook", response_class=PlainTextResponse)
@@ -31,6 +50,12 @@ async def verify_webhook(
 
 @router.post("/webhook", status_code=200)
 async def receive_webhook(request: Request):
+    # Rate limiting by IP
+    client_ip = request.client.host if request.client else "unknown"
+    if is_rate_limited(client_ip):
+        logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+        return {"status": "ok"}
+
     payload = await request.json()
     logger.info(f"Webhook received: {payload}")
 
@@ -47,6 +72,11 @@ async def receive_webhook(request: Request):
         sender = message.get("from")
         msg_id = message.get("id")
         msg_type = message.get("type")
+
+        # Rate limiting by sender phone number
+        if sender and is_rate_limited(f"sender:{sender}"):
+            logger.warning(f"Rate limit exceeded for sender: {sender}")
+            return {"status": "ok"}
 
         if msg_type == "text":
             text = message["text"]["body"]
@@ -164,7 +194,6 @@ async def data_deletion_callback(request: Request):
         logger.info(f"Data deletion request received for Facebook user_id: {user_id}")
 
         # Delete the business and all associated data for this user
-        # We look up by facebook_user_id if stored, otherwise log and acknowledge
         business_result = supabase.table("businesses").select("id").eq(
             "facebook_user_id", user_id
         ).execute()
@@ -180,7 +209,6 @@ async def data_deletion_callback(request: Request):
 
             logger.info(f"Deleted all data for business_id: {business_id}")
 
-        # Meta requires a confirmation response with a URL the user can check
         confirmation_code = hashlib.sha256(f"{user_id}-deleted".encode()).hexdigest()[:16]
 
         return JSONResponse({
