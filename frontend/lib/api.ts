@@ -70,6 +70,12 @@ export const api = {
   getContacts: () =>
     apiRequest<{ contacts: Contact[]; total: number }>("/contacts"),
 
+  updateContact: (contact_id: string, data: UpdateContactInput) =>
+    apiRequest<Contact>(`/contacts/${contact_id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
   // Messages
   getMessages: () =>
     apiRequest<{ messages: Message[]; total: number }>("/messages"),
@@ -79,6 +85,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ to, text }),
     }),
+
+  deleteMessage: (message_id: string, delete_for_everyone: boolean = false) =>
+    apiRequest(
+      `/messages/${message_id}?delete_for_everyone=${delete_for_everyone}`,
+      {
+        method: "DELETE",
+      },
+    ),
 
   // Automations
   getAutomations: () =>
@@ -134,8 +148,17 @@ export interface Contact {
   id: string;
   phone_number: string;
   name: string | null;
+  label: string;
+  notes: string | null;
+  is_repeat: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface UpdateContactInput {
+  label?: string;
+  notes?: string;
+  name?: string;
 }
 
 export interface Message {
@@ -147,6 +170,8 @@ export interface Message {
   content: string;
   status: string;
   created_at: string;
+  deleted_for_me: boolean;
+  deleted_for_everyone: boolean;
   contacts: {
     name: string | null;
     phone_number: string;
