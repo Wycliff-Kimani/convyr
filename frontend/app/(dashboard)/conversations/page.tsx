@@ -3,13 +3,30 @@
 import { useEffect, useRef, useState } from "react";
 import { api, Message, Contact } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
-import { Send, ArrowLeft, Trash2, MoreVertical, ChevronDown } from "lucide-react";
+import {
+  Send,
+  ArrowLeft,
+  Trash2,
+  MoreVertical,
+  ChevronDown,
+} from "lucide-react";
 
-const LABEL_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+const LABEL_CONFIG: Record<
+  string,
+  { label: string; color: string; bg: string }
+> = {
   new: { label: "New", color: "text-blue-600", bg: "bg-blue-50" },
   repeat: { label: "Repeat", color: "text-purple-600", bg: "bg-purple-50" },
-  pending_payment: { label: "Pending Payment", color: "text-orange-600", bg: "bg-orange-50" },
-  order_in_progress: { label: "Order In Progress", color: "text-yellow-700", bg: "bg-yellow-50" },
+  pending_payment: {
+    label: "Pending Payment",
+    color: "text-orange-600",
+    bg: "bg-orange-50",
+  },
+  order_in_progress: {
+    label: "Order In Progress",
+    color: "text-yellow-700",
+    bg: "bg-yellow-50",
+  },
   done: { label: "Done", color: "text-green-600", bg: "bg-green-50" },
 };
 
@@ -20,18 +37,23 @@ export default function ConversationsPage() {
   const [selectedContact, setSelectedContact] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
-  const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
+  const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(
+    null,
+  );
   const [labelMenuOpen, setLabelMenuOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesText, setNotesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const isAtBottom = () => {
     const container = chatContainerRef.current;
     if (!container) return true;
-    return container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+    return (
+      container.scrollHeight - container.scrollTop - container.clientHeight < 80
+    );
   };
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
@@ -61,24 +83,33 @@ export default function ConversationsPage() {
     }
   };
 
-  useEffect(() => { fetchMessages(); fetchContacts(); }, []);
+  useEffect(() => {
+    fetchMessages();
+    fetchContacts();
+  }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => { fetchMessages(true); }, 5000);
+    const interval = setInterval(() => {
+      fetchMessages(true);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (selectedContact) setTimeout(() => scrollToBottom("instant" as ScrollBehavior), 50);
+    if (selectedContact)
+      setTimeout(() => scrollToBottom("instant" as ScrollBehavior), 50);
   }, [selectedContact]);
 
   useEffect(() => {
-    if (!loading && selectedContact) setTimeout(() => scrollToBottom("instant" as ScrollBehavior), 50);
+    if (!loading && selectedContact)
+      setTimeout(() => scrollToBottom("instant" as ScrollBehavior), 50);
   }, [loading]);
 
-  // Close menus when clicking outside
   useEffect(() => {
-    const handler = () => { setActiveMessageMenu(null); setLabelMenuOpen(false); };
+    const handler = () => {
+      setActiveMessageMenu(null);
+      setLabelMenuOpen(false);
+    };
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, []);
@@ -92,12 +123,21 @@ export default function ConversationsPage() {
   });
 
   const contactList = Array.from(contactMap.entries());
-  const selectedMessages = selectedContact ? contactMap.get(selectedContact) || [] : [];
-
+  const selectedMessages = selectedContact
+    ? contactMap.get(selectedContact) || []
+    : [];
   const getContactData = (phone: string) =>
     contacts.find((c) => c.phone_number === phone);
+  const selectedContactData = selectedContact
+    ? getContactData(selectedContact)
+    : null;
 
-  const selectedContactData = selectedContact ? getContactData(selectedContact) : null;
+  const getCurrentNotes = () => {
+    if (!selectedContact) return "";
+    if (localNotes[selectedContact] !== undefined)
+      return localNotes[selectedContact];
+    return selectedContactData?.notes || "";
+  };
 
   const handleSend = async () => {
     if (!replyText.trim() || !selectedContact) return;
@@ -114,7 +154,10 @@ export default function ConversationsPage() {
     }
   };
 
-  const handleDeleteMessage = async (messageId: string, deleteForEveryone: boolean) => {
+  const handleDeleteMessage = async (
+    messageId: string,
+    deleteForEveryone: boolean,
+  ) => {
     try {
       await api.deleteMessage(messageId, deleteForEveryone);
       setActiveMessageMenu(null);
@@ -135,12 +178,19 @@ export default function ConversationsPage() {
     }
   };
 
+  const openNotes = () => {
+    setNotesText(getCurrentNotes());
+    setNotesOpen(true);
+  };
+
   const handleSaveNotes = async () => {
-    if (!selectedContactData) return;
+    if (!selectedContactData || !selectedContact) return;
     setSavingNotes(true);
     try {
       await api.updateContact(selectedContactData.id, { notes: notesText });
+      setLocalNotes((prev) => ({ ...prev, [selectedContact]: notesText }));
       setNotesOpen(false);
+      await fetchContacts();
     } catch (err) {
       console.error("Failed to save notes:", err);
     } finally {
@@ -148,25 +198,31 @@ export default function ConversationsPage() {
     }
   };
 
-  const openNotes = () => {
-    setNotesText(selectedContactData?.notes || "");
-    setNotesOpen(true);
-  };
+  const currentLabel = selectedContactData?.label || "new";
+  const currentLabelCfg = LABEL_CONFIG[currentLabel] || LABEL_CONFIG.new;
+  const currentNotes = getCurrentNotes();
 
   return (
     <div className="flex h-[calc(100vh-64px-56px)] md:h-[calc(100vh-64px)] gap-4 -m-4 sm:-m-6">
-
       {/* Contact List */}
-      <div className={`${selectedContact ? "hidden md:flex" : "flex"} w-full md:w-72 bg-white border-r border-gray-100 flex-col h-full overflow-hidden`}>
+      <div
+        className={`${selectedContact ? "hidden md:flex" : "flex"} w-full md:w-72 bg-white border-r border-gray-100 flex-col h-full overflow-hidden`}
+      >
         <div className="px-4 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-[#0F172A]">Conversations</h2>
-          <p className="text-xs text-gray-400 mt-0.5">{contactList.length} contacts</p>
+          <h2 className="text-base font-semibold text-[#0F172A]">
+            Conversations
+          </h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {contactList.length} contacts
+          </p>
         </div>
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <p className="text-sm text-gray-400 px-4 py-4">Loading...</p>
           ) : contactList.length === 0 ? (
-            <p className="text-sm text-gray-400 px-4 py-4">No conversations yet.</p>
+            <p className="text-sm text-gray-400 px-4 py-4">
+              No conversations yet.
+            </p>
           ) : (
             contactList.map(([phone, msgs]) => {
               const last = msgs[msgs.length - 1];
@@ -188,12 +244,16 @@ export default function ConversationsPage() {
                         <p className="text-sm font-medium text-[#0F172A] truncate">
                           {contactData?.name || phone}
                         </p>
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${labelCfg.color} ${labelCfg.bg}`}>
+                        <span
+                          className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${labelCfg.color} ${labelCfg.bg}`}
+                        >
                           {labelCfg.label}
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 truncate mt-0.5">
-                        {last?.deleted_for_everyone ? "This message was deleted." : last?.content}
+                        {last?.deleted_for_everyone
+                          ? "This message was deleted."
+                          : last?.content}
                       </p>
                     </div>
                   </div>
@@ -205,7 +265,9 @@ export default function ConversationsPage() {
       </div>
 
       {/* Chat Area */}
-      <div className={`${selectedContact ? "flex" : "hidden md:flex"} flex-1 flex-col bg-white md:rounded-2xl border border-gray-100 overflow-hidden`}>
+      <div
+        className={`${selectedContact ? "flex" : "hidden md:flex"} flex-1 flex-col bg-white md:rounded-2xl border border-gray-100 overflow-hidden`}
+      >
         {!selectedContact ? (
           <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
             Select a conversation to view messages
@@ -215,40 +277,58 @@ export default function ConversationsPage() {
             {/* Chat Header */}
             <div className="px-4 sm:px-6 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <button onClick={() => setSelectedContact(null)} className="md:hidden p-1 text-gray-400 hover:text-gray-600">
+                <button
+                  onClick={() => setSelectedContact(null)}
+                  className="md:hidden p-1 text-gray-400 hover:text-gray-600"
+                >
                   <ArrowLeft size={18} />
                 </button>
                 <div>
                   <p className="text-sm font-semibold text-[#0F172A]">
                     {selectedContactData?.name || selectedContact}
                   </p>
-                  <p className="text-xs text-gray-400">{selectedMessages.length} messages</p>
+                  <p className="text-xs text-gray-400">
+                    {selectedMessages.length} messages
+                  </p>
                 </div>
               </div>
 
-              {/* Label + Notes controls */}
               <div className="flex items-center gap-2">
                 {/* Notes button */}
                 <button
-                  onClick={openNotes}
-                  className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-2 py-1 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openNotes();
+                  }}
+                  className={`text-xs border rounded-lg px-2 py-1 transition-colors flex items-center gap-1 ${
+                    currentNotes
+                      ? "text-yellow-700 border-yellow-300 bg-yellow-50"
+                      : "text-gray-500 border-gray-200 hover:text-gray-700"
+                  }`}
                 >
                   Notes
+                  {currentNotes && (
+                    <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" />
+                  )}
                 </button>
 
                 {/* Label dropdown */}
                 <div className="relative">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setLabelMenuOpen(!labelMenuOpen); }}
-                    className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border transition-colors ${
-                      LABEL_CONFIG[selectedContactData?.label || "new"].color
-                    } ${LABEL_CONFIG[selectedContactData?.label || "new"].bg} border-transparent`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLabelMenuOpen((prev) => !prev);
+                    }}
+                    className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border border-transparent transition-colors ${currentLabelCfg.color} ${currentLabelCfg.bg}`}
                   >
-                    {LABEL_CONFIG[selectedContactData?.label || "new"].label}
+                    {currentLabelCfg.label}
                     <ChevronDown size={12} />
                   </button>
                   {labelMenuOpen && (
-                    <div className="absolute right-0 top-8 bg-white border border-gray-100 rounded-xl shadow-lg z-50 min-w-[160px] py-1" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="absolute right-0 top-8 bg-white border border-gray-100 rounded-xl shadow-lg z-50 min-w-40 py-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {Object.entries(LABEL_CONFIG).map(([key, cfg]) => (
                         <button
                           key={key}
@@ -267,13 +347,16 @@ export default function ConversationsPage() {
             {/* Notes panel */}
             {notesOpen && (
               <div className="px-4 sm:px-6 py-3 border-b border-gray-100 bg-yellow-50">
-                <p className="text-xs font-medium text-yellow-700 mb-2">Private notes about this customer</p>
+                <p className="text-xs font-medium text-yellow-700 mb-2">
+                  Private notes — only you can see this
+                </p>
                 <textarea
                   value={notesText}
                   onChange={(e) => setNotesText(e.target.value)}
-                  placeholder="Add notes here... (only you can see this)"
+                  placeholder="e.g. Likes blue items, usually orders on Fridays..."
                   className="w-full text-sm border border-yellow-200 rounded-lg px-3 py-2 outline-none focus:border-yellow-400 bg-white resize-none"
                   rows={3}
+                  autoFocus
                 />
                 <div className="flex gap-2 mt-2">
                   <button
@@ -294,80 +377,108 @@ export default function ConversationsPage() {
             )}
 
             {/* Messages */}
-            <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-3">
+            <div
+              ref={chatContainerRef}
+              className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-3"
+            >
               {selectedMessages.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"} group`}
                 >
                   <div className="relative flex items-end gap-1">
-                    {/* Delete menu trigger — left side for outbound */}
-                    {msg.direction === "outbound" && !msg.deleted_for_everyone && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id); }}
-                          className="p-1 text-gray-400 hover:text-gray-600 rounded"
-                        >
-                          <MoreVertical size={14} />
-                        </button>
-                        {activeMessageMenu === msg.id && (
-                          <div className="absolute bottom-8 right-0 bg-white border border-gray-100 rounded-xl shadow-lg z-50 min-w-[160px] py-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => handleDeleteMessage(msg.id, false)}
-                              className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+                    {msg.direction === "outbound" &&
+                      !msg.deleted_for_everyone && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMessageMenu(
+                                activeMessageMenu === msg.id ? null : msg.id,
+                              );
+                            }}
+                            className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+                          {activeMessageMenu === msg.id && (
+                            <div
+                              className="absolute bottom-8 right-0 bg-white border border-gray-100 rounded-xl shadow-lg z-50 min-w-40 py-1"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <Trash2 size={12} />
-                              Delete for me
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMessage(msg.id, true)}
-                              className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 flex items-center gap-2"
-                            >
-                              <Trash2 size={12} />
-                              Delete for everyone
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                              <button
+                                onClick={() =>
+                                  handleDeleteMessage(msg.id, false)
+                                }
+                                className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <Trash2 size={12} /> Delete for me
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteMessage(msg.id, true)
+                                }
+                                className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 flex items-center gap-2"
+                              >
+                                <Trash2 size={12} /> Delete for everyone
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                     <div
                       className={`max-w-[80%] sm:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${
                         msg.deleted_for_everyone
                           ? "bg-gray-100 text-gray-400 italic"
                           : msg.direction === "outbound"
-                          ? "bg-[#25D366] text-white rounded-br-sm"
-                          : "bg-gray-100 text-[#0F172A] rounded-bl-sm"
+                            ? "bg-[#25D366] text-white rounded-br-sm"
+                            : "bg-gray-100 text-[#0F172A] rounded-bl-sm"
                       }`}
                     >
-                      <p>{msg.deleted_for_everyone ? "This message was deleted." : msg.content}</p>
-                      <p className={`text-xs mt-1 ${msg.direction === "outbound" && !msg.deleted_for_everyone ? "text-white/70" : "text-gray-400"}`}>
+                      <p>
+                        {msg.deleted_for_everyone
+                          ? "This message was deleted."
+                          : msg.content}
+                      </p>
+                      <p
+                        className={`text-xs mt-1 ${msg.direction === "outbound" && !msg.deleted_for_everyone ? "text-white/70" : "text-gray-400"}`}
+                      >
                         {formatDateTime(msg.created_at)}
                       </p>
                     </div>
 
-                    {/* Delete menu trigger — right side for inbound */}
-                    {msg.direction === "inbound" && !msg.deleted_for_everyone && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id); }}
-                          className="p-1 text-gray-400 hover:text-gray-600 rounded"
-                        >
-                          <MoreVertical size={14} />
-                        </button>
-                        {activeMessageMenu === msg.id && (
-                          <div className="absolute bottom-8 left-0 bg-white border border-gray-100 rounded-xl shadow-lg z-50 min-w-[160px] py-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => handleDeleteMessage(msg.id, false)}
-                              className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+                    {msg.direction === "inbound" &&
+                      !msg.deleted_for_everyone && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMessageMenu(
+                                activeMessageMenu === msg.id ? null : msg.id,
+                              );
+                            }}
+                            className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+                          {activeMessageMenu === msg.id && (
+                            <div
+                              className="absolute bottom-8 left-0 bg-white border border-gray-100 rounded-xl shadow-lg z-50 min-w-40 py-1"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <Trash2 size={12} />
-                              Delete for me
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                              <button
+                                onClick={() =>
+                                  handleDeleteMessage(msg.id, false)
+                                }
+                                className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <Trash2 size={12} /> Delete for me
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                   </div>
                 </div>
               ))}
