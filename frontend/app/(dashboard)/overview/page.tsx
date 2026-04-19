@@ -14,8 +14,8 @@ import {
   AlertCircle,
   ArrowRight,
   Clock,
-  CheckCircle2,
-  XCircle,
+  AlertTriangle,
+  Trophy,
 } from "lucide-react";
 
 export default function OverviewPage() {
@@ -51,12 +51,13 @@ export default function OverviewPage() {
   const outboundMessages = messages.filter((m) => m.direction === "outbound");
   const isWhatsAppConnected = !!business?.whatsapp_phone_number_id;
 
-  // Business Value Logic
+  // New leads — contacts with 3 or fewer messages
   const newLeads = contacts.filter((c) => {
     const contactMessages = messages.filter((m) => m.contact_id === c.id);
-    return contactMessages.length <= 3; // Basic definition of a new lead
+    return contactMessages.length <= 3;
   });
 
+  // Waiting for reply — last message was inbound
   const needsReply = contacts.filter((c) => {
     const contactMessages = messages.filter((m) => m.contact_id === c.id);
     if (contactMessages.length === 0) return false;
@@ -64,13 +65,33 @@ export default function OverviewPage() {
     return lastMsg.direction === "inbound";
   });
 
-  const responseRate =
-    inboundMessages.length > 0
-      ? Math.round((outboundMessages.length / inboundMessages.length) * 100)
-      : 0;
+  // Missed opportunities — inbound with NO outbound reply within 1 hour
+  const missedOpportunities = contacts.filter((c) => {
+    const contactMessages = messages.filter((m) => m.contact_id === c.id);
+    const inbound = contactMessages.filter((m) => m.direction === "inbound");
+    if (inbound.length === 0) return false;
+    const lastInbound = inbound[inbound.length - 1];
+    const lastInboundTime = new Date(lastInbound.created_at).getTime();
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    // Only count if the message is older than 1 hour (so it had time to be replied)
+    if (lastInboundTime > oneHourAgo) return false;
+    // Check if there's any outbound reply after that inbound
+    const repliedAfter = contactMessages.some(
+      (m) =>
+        m.direction === "outbound" &&
+        new Date(m.created_at).getTime() > lastInboundTime,
+    );
+    return !repliedAfter;
+  });
 
   const estimatedHoursSaved =
     Math.round(((outboundMessages.length * 2.5) / 60) * 10) / 10;
+  const estimatedKESSaved = Math.round(estimatedHoursSaved * 500); // KES 500/hr estimate
+
+  // Sales outcomes
+  const salesClosed = contacts.filter(
+    (c) => (c as any).outcome === "sale",
+  ).length;
 
   // Recent activity — last 5 inbound messages
   const recentActivity = messages
@@ -78,7 +99,6 @@ export default function OverviewPage() {
     .slice(-5)
     .reverse();
 
-  // Get hour of day for greeting
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -136,8 +156,7 @@ export default function OverviewPage() {
                 WhatsApp not connected
               </p>
               <p className="text-xs text-amber-600 mt-0.5">
-                Connect your WhatsApp Business number to start automating
-                customer replies.
+                Connect your WhatsApp Business number to start automating.
               </p>
             </div>
           </div>
@@ -160,7 +179,7 @@ export default function OverviewPage() {
             {loading
               ? "Loading your stats..."
               : outboundMessages.length > 0
-                ? `Convyr saved you ~${estimatedHoursSaved} hours today. ${needsReply.length} ${needsReply.length === 1 ? "customer is" : "customers are"} waiting for a reply.`
+                ? `Convyr saved you ~${estimatedHoursSaved} hours. ${needsReply.length} ${needsReply.length === 1 ? "customer is" : "customers are"} waiting for a reply.`
                 : "Here's what's happening with your WhatsApp automation today."}
           </p>
         </div>
@@ -168,9 +187,83 @@ export default function OverviewPage() {
           onClick={() => router.push("/analytics")}
           className="flex items-center gap-2 bg-[#0F172A] hover:bg-[#1e293b] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
         >
-          <Download size={15} /> Download Report
+          <Download size={15} /> View Analytics
         </button>
       </div>
+
+      {/* ROI Summary Card */}
+      {!loading && outboundMessages.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Time saved */}
+          <div className="bg-linear-to-br from-[#25D366] to-[#128C7E] rounded-2xl p-4 text-white">
+            <div className="flex items-center gap-2 mb-1">
+              <Zap size={15} className="text-white/80" />
+              <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">
+                Time Saved
+              </p>
+            </div>
+            <p className="text-3xl font-bold">{estimatedHoursSaved}h</p>
+            <p className="text-xs text-white/70 mt-1">
+              ≈ KES {estimatedKESSaved.toLocaleString()} in labour
+            </p>
+          </div>
+
+          {/* Missed opportunities */}
+          <div
+            className={`rounded-2xl p-4 border ${missedOpportunities.length > 0 ? "bg-red-50 border-red-100" : "bg-gray-50 border-gray-100"}`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle
+                size={15}
+                className={
+                  missedOpportunities.length > 0
+                    ? "text-red-400"
+                    : "text-gray-300"
+                }
+              />
+              <p
+                className={`text-xs font-semibold uppercase tracking-wide ${missedOpportunities.length > 0 ? "text-red-400" : "text-gray-400"}`}
+              >
+                Missed Leads
+              </p>
+            </div>
+            <p
+              className={`text-3xl font-bold ${missedOpportunities.length > 0 ? "text-red-500" : "text-gray-300"}`}
+            >
+              {missedOpportunities.length}
+            </p>
+            <p
+              className={`text-xs mt-1 ${missedOpportunities.length > 0 ? "text-red-400" : "text-gray-400"}`}
+            >
+              {missedOpportunities.length > 0
+                ? "No reply after 1 hour"
+                : "All leads handled ✓"}
+            </p>
+            {missedOpportunities.length > 0 && (
+              <button
+                onClick={() => router.push("/conversations")}
+                className="mt-2 text-[10px] font-bold text-red-500 hover:text-red-700 underline underline-offset-2"
+              >
+                Reply now →
+              </button>
+            )}
+          </div>
+
+          {/* Sales closed */}
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Trophy size={15} className="text-amber-500" />
+              <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">
+                Sales Closed
+              </p>
+            </div>
+            <p className="text-3xl font-bold text-amber-600">{salesClosed}</p>
+            <p className="text-xs text-amber-400 mt-1">
+              Marked as "Sale" in conversations
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -295,7 +388,6 @@ export default function OverviewPage() {
                 (c) => c.id === message.contact_id,
               );
               const labelKey = contactData?.label || "new";
-
               const isAutoReplied = messages.some(
                 (m) =>
                   m.direction === "outbound" &&
@@ -306,8 +398,6 @@ export default function OverviewPage() {
                     new Date(message.created_at).getTime() <
                     60000,
               );
-
-              // Simple tag logic based on keywords
               const lowerMsg = message.content.toLowerCase();
               const tag =
                 lowerMsg.includes("order") || lowerMsg.includes("buy")
@@ -330,14 +420,12 @@ export default function OverviewPage() {
                       {(message.contacts?.phone_number || "??").slice(-2)}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium text-[#0F172A] truncate">
                           {message.contacts?.name ||
                             message.contacts?.phone_number}
                         </p>
-                        <span
-                          className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-gray-50 text-gray-400 border border-gray-100`}
-                        >
+                        <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-gray-50 text-gray-400 border border-gray-100">
                           {labelKey}
                         </span>
                         {tag && (
@@ -396,7 +484,7 @@ export default function OverviewPage() {
         )}
       </div>
 
-      {/* Coach / Smart Suggestion */}
+      {/* Smart Suggestion */}
       {!loading && outboundMessages.length > 10 && (
         <div className="bg-linear-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white overflow-hidden relative group">
           <div className="relative z-10">
@@ -417,7 +505,7 @@ export default function OverviewPage() {
               Configure Pricing Rule <ArrowRight size={16} />
             </button>
           </div>
-          <div className="absolute -right-8 -top-8 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all"></div>
+          <div className="absolute -right-8 -top-8 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all" />
         </div>
       )}
     </div>

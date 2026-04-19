@@ -13,9 +13,11 @@ import {
   Reply,
   Copy,
   Star,
-  ChevronRight,
   Search,
   Sparkles,
+  CheckCircle2,
+  XCircle,
+  Clock,
 } from "lucide-react";
 
 const LABEL_CONFIG: Record<
@@ -54,7 +56,30 @@ const LABEL_CONFIG: Record<
   },
 };
 
-// WhatsApp-style subtle chat background
+const OUTCOME_CONFIG: Record<
+  string,
+  { label: string; icon: any; color: string; bg: string }
+> = {
+  sale: {
+    label: "Sale ✓",
+    icon: CheckCircle2,
+    color: "text-green-600",
+    bg: "bg-green-50",
+  },
+  lost: {
+    label: "Lost",
+    icon: XCircle,
+    color: "text-red-500",
+    bg: "bg-red-50",
+  },
+  pending: {
+    label: "Pending",
+    icon: Clock,
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+  },
+};
+
 const CHAT_BG = `
   bg-[#efeae2]
   [background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4c9b8' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")]
@@ -75,8 +100,7 @@ function getAvatarColor(phone: string): string {
     "bg-teal-500",
     "bg-rose-500",
   ];
-  const idx = parseInt(phone.slice(-1), 10) % colors.length;
-  return colors[idx];
+  return colors[parseInt(phone.slice(-1), 10) % colors.length];
 }
 
 export default function ConversationsPage() {
@@ -90,6 +114,7 @@ export default function ConversationsPage() {
     null,
   );
   const [labelMenuOpen, setLabelMenuOpen] = useState(false);
+  const [outcomeMenuOpen, setOutcomeMenuOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesText, setNotesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
@@ -104,14 +129,22 @@ export default function ConversationsPage() {
   );
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [chatSearchQuery, setChatSearchQuery] = useState("");
+  const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatSearchRef = useRef<HTMLInputElement>(null);
   const menuJustOpenedRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
+  const swipeStartXRef = useRef<number>(0);
+  const swipeStartYRef = useRef<number>(0);
+  const swipeMsgRef = useRef<string | null>(null);
+  const swipeTriggeredRef = useRef(false);
+
   const isAtBottom = () => {
     const container = chatContainerRef.current;
     if (!container) return true;
@@ -171,6 +204,11 @@ export default function ConversationsPage() {
   }, [loading]);
 
   useEffect(() => {
+    setChatSearchQuery("");
+    setChatSearchOpen(false);
+  }, [selectedContact]);
+
+  useEffect(() => {
     const handler = () => {
       if (menuJustOpenedRef.current) {
         menuJustOpenedRef.current = false;
@@ -178,6 +216,7 @@ export default function ConversationsPage() {
       }
       setActiveMessageMenu(null);
       setLabelMenuOpen(false);
+      setOutcomeMenuOpen(false);
     };
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
@@ -193,7 +232,7 @@ export default function ConversationsPage() {
 
   const contactList = Array.from(contactMap.entries());
   const filteredContactList = searchQuery
-    ? contactList.filter(([phone, msgs]) => {
+    ? contactList.filter(([phone]) => {
         const cd = getContactData(phone);
         const name = cd?.name || phone;
         return (
@@ -203,9 +242,14 @@ export default function ConversationsPage() {
       })
     : contactList;
 
-  const selectedMessages = selectedContact
+  const allSelectedMessages = selectedContact
     ? contactMap.get(selectedContact) || []
     : [];
+  const selectedMessages = chatSearchQuery
+    ? allSelectedMessages.filter((m) =>
+        m.content.toLowerCase().includes(chatSearchQuery.toLowerCase()),
+      )
+    : allSelectedMessages;
 
   function getContactData(phone: string) {
     return contacts.find((c) => c.phone_number === phone);
@@ -288,6 +332,17 @@ export default function ConversationsPage() {
     }
   };
 
+  const handleOutcomeChange = async (outcome: string) => {
+    if (!selectedContactData) return;
+    try {
+      await api.updateContact(selectedContactData.id, { outcome } as any);
+      setOutcomeMenuOpen(false);
+      await fetchContacts();
+    } catch (err) {
+      console.error("Failed to update outcome:", err);
+    }
+  };
+
   const openNotes = () => {
     setNotesText(getCurrentNotes());
     setNotesOpen(true);
@@ -330,13 +385,12 @@ export default function ConversationsPage() {
   };
 
   const handleSuggestReply = async () => {
-    if (!selectedContact || selectedMessages.length === 0) return;
+    if (!selectedContact || allSelectedMessages.length === 0) return;
     setSuggesting(true);
     try {
-      const context = selectedMessages.slice(-10).map((m) => ({
-        direction: m.direction,
-        content: m.content,
-      }));
+      const context = allSelectedMessages
+        .slice(-10)
+        .map((m) => ({ direction: m.direction, content: m.content }));
       const res = await api.suggestReply(context);
       setReplyText(res.suggestion);
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -353,7 +407,6 @@ export default function ConversationsPage() {
       longPressTriggeredRef.current = true;
       menuJustOpenedRef.current = true;
       setActiveMessageMenu(msgId);
-      // Haptic feedback on supported devices
       if (navigator.vibrate) navigator.vibrate(40);
     }, 500);
   };
@@ -365,11 +418,47 @@ export default function ConversationsPage() {
     }
   };
 
+  const handleSwipeTouchStart = (e: React.TouchEvent, msgId: string) => {
+    swipeStartXRef.current = e.touches[0].clientX;
+    swipeStartYRef.current = e.touches[0].clientY;
+    swipeMsgRef.current = msgId;
+    swipeTriggeredRef.current = false;
+    handleLongPressStart(msgId);
+  };
+
+  const handleSwipeTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - swipeStartXRef.current;
+    const dy = Math.abs(e.touches[0].clientY - swipeStartYRef.current);
+    if (
+      dx > 60 &&
+      dy < 40 &&
+      !swipeTriggeredRef.current &&
+      swipeMsgRef.current
+    ) {
+      swipeTriggeredRef.current = true;
+      handleLongPressEnd();
+      const msg = allSelectedMessages.find((m) => m.id === swipeMsgRef.current);
+      if (msg) {
+        handleReplyTo(msg);
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
+    }
+    if (dy > 10 || dx > 10) handleLongPressEnd();
+  };
+
+  const handleSwipeTouchEnd = () => {
+    handleLongPressEnd();
+    swipeMsgRef.current = null;
+  };
+
   const currentLabel = selectedContactData?.label || "new";
   const currentLabelCfg = LABEL_CONFIG[currentLabel] || LABEL_CONFIG.new;
+  const currentOutcome = (selectedContactData as any)?.outcome || null;
+  const currentOutcomeCfg = currentOutcome
+    ? OUTCOME_CONFIG[currentOutcome]
+    : null;
   const currentNotes = getCurrentNotes();
 
-  // Format time only (e.g. "8:27 pm")
   const formatTime = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleTimeString("en-KE", {
@@ -384,11 +473,10 @@ export default function ConversationsPage() {
 
   return (
     <div className="flex h-[calc(100vh-64px-56px)] md:h-[calc(100vh-64px)] -m-4 sm:-m-6 overflow-hidden">
-      {/* ── Sidebar ── */}
+      {/* Sidebar */}
       <div
         className={`${selectedContact ? "hidden md:flex" : "flex"} w-full md:w-[320px] bg-white border-r border-gray-200 flex-col h-full`}
       >
-        {/* Sidebar header */}
         <div className="px-4 py-3 bg-[#f0f2f5] border-b border-gray-200">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[15px] font-semibold text-[#111b21]">Chats</h2>
@@ -398,12 +486,10 @@ export default function ConversationsPage() {
                 setNewConvoOpen(true);
               }}
               className="w-8 h-8 rounded-full bg-[#25D366] hover:bg-[#128C7E] flex items-center justify-center transition-colors shadow-sm"
-              title="New conversation"
             >
               <Plus size={15} className="text-white" />
             </button>
           </div>
-          {/* Search bar */}
           <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-gray-200">
             <Search size={14} className="text-gray-400 shrink-0" />
             <input
@@ -416,10 +502,9 @@ export default function ConversationsPage() {
           </div>
         </div>
 
-        {/* Contact list */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex flex-col gap-0">
+            <div className="flex flex-col">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
@@ -443,19 +528,18 @@ export default function ConversationsPage() {
               const contactData = getContactData(phone);
               const labelKey = contactData?.label || "new";
               const labelCfg = LABEL_CONFIG[labelKey] || LABEL_CONFIG.new;
-              const initials = getInitials(phone, contactData?.name);
-              const avatarColor = getAvatarColor(phone);
-              const isSelected = selectedContact === phone;
+              const outcome = (contactData as any)?.outcome;
+              const outcomeCfg = outcome ? OUTCOME_CONFIG[outcome] : null;
               return (
                 <button
                   key={phone}
                   onClick={() => setSelectedContact(phone)}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-[#f5f6f6] transition-colors flex items-center gap-3 ${isSelected ? "bg-[#f0f2f5]" : ""}`}
+                  className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-[#f5f6f6] transition-colors flex items-center gap-3 ${selectedContact === phone ? "bg-[#f0f2f5]" : ""}`}
                 >
                   <div
-                    className={`w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center text-xs font-semibold text-white shrink-0`}
+                    className={`w-10 h-10 rounded-full ${getAvatarColor(phone)} flex items-center justify-center text-xs font-semibold text-white shrink-0`}
                   >
-                    {initials}
+                    {getInitials(phone, contactData?.name)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
@@ -466,11 +550,20 @@ export default function ConversationsPage() {
                         <p className="text-[11px] text-gray-400">
                           {formatTime(last?.created_at)}
                         </p>
-                        <span
-                          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${labelCfg.color} ${labelCfg.bg}`}
-                        >
-                          {labelCfg.label}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          {outcomeCfg && (
+                            <span
+                              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${outcomeCfg.color} ${outcomeCfg.bg}`}
+                            >
+                              {outcomeCfg.label}
+                            </span>
+                          )}
+                          <span
+                            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${labelCfg.color} ${labelCfg.bg}`}
+                          >
+                            {labelCfg.label}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <p className="text-[13px] text-gray-500 truncate mt-0.5">
@@ -486,7 +579,7 @@ export default function ConversationsPage() {
         </div>
       </div>
 
-      {/* ── New Conversation Modal ── */}
+      {/* New Conversation Modal */}
       {newConvoOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -551,7 +644,7 @@ export default function ConversationsPage() {
         </div>
       )}
 
-      {/* ── Chat Area ── */}
+      {/* Chat Area */}
       <div
         className={`${selectedContact ? "flex" : "hidden md:flex"} flex-1 flex-col overflow-hidden`}
       >
@@ -595,38 +688,90 @@ export default function ConversationsPage() {
                     {selectedContactData?.name || selectedContact}
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    {selectedMessages.length} messages
+                    {allSelectedMessages.length} messages
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {/* Notes button */}
+              <div className="flex items-center gap-1.5">
+                {/* Chat search */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setChatSearchOpen((p) => !p);
+                    setTimeout(() => chatSearchRef.current?.focus(), 50);
+                  }}
+                  className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <Search size={15} />
+                </button>
+
+                {/* Notes */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     openNotes();
                   }}
-                  className={`text-xs border rounded-lg px-2.5 py-1.5 transition-colors flex items-center gap-1.5 font-medium ${
-                    currentNotes
-                      ? "text-amber-700 border-amber-300 bg-amber-50"
-                      : "text-gray-500 border-gray-200 hover:bg-gray-100"
-                  }`}
+                  className={`text-xs border rounded-lg px-2 py-1.5 transition-colors flex items-center gap-1.5 font-medium ${currentNotes ? "text-amber-700 border-amber-300 bg-amber-50" : "text-gray-500 border-gray-200 hover:bg-gray-100"}`}
                 >
-                  📝 Notes
+                  📝
                   {currentNotes && (
                     <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
                   )}
                 </button>
 
-                {/* Label dropdown */}
+                {/* Outcome */}
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOutcomeMenuOpen((p) => !p);
+                    }}
+                    className={`flex items-center gap-1 text-xs font-semibold px-2 py-1.5 rounded-lg border transition-colors ${currentOutcomeCfg ? `${currentOutcomeCfg.color} ${currentOutcomeCfg.bg} border-transparent` : "text-gray-500 border-gray-200 hover:bg-gray-100"}`}
+                  >
+                    {currentOutcomeCfg ? (
+                      <>
+                        <currentOutcomeCfg.icon size={11} />
+                        {currentOutcomeCfg.label}
+                      </>
+                    ) : (
+                      <span>Outcome</span>
+                    )}
+                  </button>
+                  {outcomeMenuOpen && (
+                    <div
+                      className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-xl z-50 min-w-36 py-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {Object.entries(OUTCOME_CONFIG).map(([key, cfg]) => (
+                        <button
+                          key={key}
+                          onClick={() => handleOutcomeChange(key)}
+                          className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2 ${cfg.color}`}
+                        >
+                          <cfg.icon size={13} /> {cfg.label}
+                        </button>
+                      ))}
+                      {currentOutcome && (
+                        <button
+                          onClick={() => handleOutcomeChange("")}
+                          className="w-full text-left px-3 py-2 text-xs text-gray-400 hover:bg-gray-50 flex items-center gap-2 border-t border-gray-100 mt-1"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Label */}
                 <div className="relative">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setLabelMenuOpen((p) => !p);
                     }}
-                    className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${currentLabelCfg.color} ${currentLabelCfg.bg} border-transparent`}
+                    className={`flex items-center gap-1 text-xs font-semibold px-2 py-1.5 rounded-lg border transition-colors ${currentLabelCfg.color} ${currentLabelCfg.bg} border-transparent`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${currentLabelCfg.dot}`}
@@ -636,16 +781,16 @@ export default function ConversationsPage() {
                   </button>
                   {labelMenuOpen && (
                     <div
-                      className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-xl z-50 min-w-44 py-1.5 overflow-hidden"
+                      className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-xl z-50 min-w-44 py-1.5"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {Object.entries(LABEL_CONFIG).map(([key, cfg]) => (
                         <button
                           key={key}
                           onClick={() => handleLabelChange(key)}
-                          className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 ${cfg.color}`}
+                          className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2 ${cfg.color}`}
                         >
-                          <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                          <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />{" "}
                           {cfg.label}
                         </button>
                       ))}
@@ -655,11 +800,41 @@ export default function ConversationsPage() {
               </div>
             </div>
 
+            {/* Chat search bar */}
+            {chatSearchOpen && (
+              <div className="px-4 py-2 bg-white border-b border-gray-200 flex items-center gap-2">
+                <Search size={14} className="text-gray-400 shrink-0" />
+                <input
+                  ref={chatSearchRef}
+                  type="text"
+                  placeholder="Search in this conversation..."
+                  value={chatSearchQuery}
+                  onChange={(e) => setChatSearchQuery(e.target.value)}
+                  className="flex-1 text-sm outline-none text-[#111b21] placeholder-gray-400"
+                />
+                {chatSearchQuery && (
+                  <span className="text-[11px] text-gray-400">
+                    {selectedMessages.length} result
+                    {selectedMessages.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setChatSearchOpen(false);
+                    setChatSearchQuery("");
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+
             {/* Notes panel */}
             {notesOpen && (
-              <div className="px-4 py-3 border-b border-amber-200 bg-amber-50/80 backdrop-blur-sm">
+              <div className="px-4 py-3 border-b border-amber-200 bg-amber-50/80">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-amber-700">
                     📝 Private notes — only visible to you
                   </p>
                   <button
@@ -672,7 +847,7 @@ export default function ConversationsPage() {
                 <textarea
                   value={notesText}
                   onChange={(e) => setNotesText(e.target.value)}
-                  placeholder="e.g. Prefers blue items, usually orders on Fridays, referred by John..."
+                  placeholder="e.g. Prefers blue items, usually orders on Fridays..."
                   className="w-full text-sm border border-amber-200 rounded-xl px-3 py-2.5 outline-none focus:border-amber-400 bg-white resize-none placeholder-amber-300"
                   rows={3}
                   autoFocus
@@ -700,11 +875,24 @@ export default function ConversationsPage() {
               ref={chatContainerRef}
               className={`flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-1 ${CHAT_BG}`}
             >
-              {selectedMessages.map((msg, idx) => {
+              {chatSearchQuery && selectedMessages.length === 0 && (
+                <div className="flex items-center justify-center py-8">
+                  <p className="text-sm text-gray-400">
+                    No messages match "{chatSearchQuery}"
+                  </p>
+                </div>
+              )}
+              {selectedMessages.map((msg) => {
                 const isOut = msg.direction === "outbound";
                 const isDeleted = msg.deleted_for_everyone;
                 const isStarred = starredMessages.has(msg.id);
                 const showMenu = activeMessageMenu === msg.id;
+                const isHighlighted = !!(
+                  chatSearchQuery &&
+                  msg.content
+                    .toLowerCase()
+                    .includes(chatSearchQuery.toLowerCase())
+                );
 
                 return (
                   <div
@@ -731,20 +919,20 @@ export default function ConversationsPage() {
                           >
                             <button
                               onClick={() => handleReplyTo(msg)}
-                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                             >
                               <Reply size={15} className="text-gray-400" />{" "}
                               Reply
                             </button>
                             <button
                               onClick={() => handleCopyMessage(msg.content)}
-                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                             >
                               <Copy size={15} className="text-gray-400" /> Copy
                             </button>
                             <button
                               onClick={() => handleStarMessage(msg.id)}
-                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                             >
                               <Star
                                 size={15}
@@ -753,13 +941,13 @@ export default function ConversationsPage() {
                                     ? "text-amber-400 fill-amber-400"
                                     : "text-gray-400"
                                 }
-                              />
+                              />{" "}
                               {isStarred ? "Unstar" : "Star"}
                             </button>
                             <div className="border-t border-gray-100 my-1" />
                             <button
                               onClick={() => handleDeleteMessage(msg.id, false)}
-                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-500 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-500 hover:bg-gray-50 flex items-center gap-3"
                             >
                               <Trash2 size={15} className="text-gray-400" />{" "}
                               Delete for me
@@ -769,7 +957,7 @@ export default function ConversationsPage() {
                       </div>
                     )}
 
-                    {/* Bubble — long press opens menu on mobile */}
+                    {/* Bubble */}
                     <div
                       className={`relative max-w-[72%] sm:max-w-md px-3 py-2 text-[14px] shadow-sm select-none ${
                         isDeleted
@@ -777,12 +965,12 @@ export default function ConversationsPage() {
                           : isOut
                             ? "bg-[#d9fdd3] text-[#111b21] rounded-tl-2xl rounded-tr-sm rounded-bl-2xl rounded-br-2xl"
                             : "bg-white text-[#111b21] rounded-tl-sm rounded-tr-2xl rounded-bl-2xl rounded-br-2xl"
-                      } ${showMenu ? "opacity-80" : ""}`}
-                      onTouchStart={() =>
-                        !isDeleted && handleLongPressStart(msg.id)
+                      } ${showMenu ? "opacity-80" : ""} ${isHighlighted ? "ring-2 ring-yellow-400 ring-offset-1" : ""}`}
+                      onTouchStart={(e) =>
+                        !isDeleted && handleSwipeTouchStart(e, msg.id)
                       }
-                      onTouchEnd={handleLongPressEnd}
-                      onTouchMove={handleLongPressEnd}
+                      onTouchMove={handleSwipeTouchMove}
+                      onTouchEnd={handleSwipeTouchEnd}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         if (!isDeleted) {
@@ -791,15 +979,13 @@ export default function ConversationsPage() {
                         }
                       }}
                     >
-                      {/* Bubble tail */}
                       {!isDeleted && isOut && (
                         <span className="absolute -right-1.5 bottom-2 w-0 h-0 border-l-[6px] border-l-[#d9fdd3] border-t-[6px] border-t-transparent border-b-0" />
                       )}
                       {!isDeleted && !isOut && (
                         <span className="absolute -left-1.5 bottom-2 w-0 h-0 border-r-[6px] border-r-white border-t-[6px] border-t-transparent border-b-0" />
                       )}
-
-                      <p className="leading-snug break-all">
+                      <p className="leading-snug wrap-break-word">
                         {isDeleted
                           ? "🚫 This message was deleted."
                           : msg.content}
@@ -826,7 +1012,7 @@ export default function ConversationsPage() {
                       </div>
                     </div>
 
-                    {/* Outbound menu trigger — always visible on mobile, hover on desktop */}
+                    {/* Outbound menu trigger */}
                     {isOut && !isDeleted && (
                       <div className="flex items-end mb-1 ml-1 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity opacity-100 relative self-end">
                         <button
@@ -846,20 +1032,20 @@ export default function ConversationsPage() {
                           >
                             <button
                               onClick={() => handleReplyTo(msg)}
-                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                             >
                               <Reply size={15} className="text-gray-400" />{" "}
                               Reply
                             </button>
                             <button
                               onClick={() => handleCopyMessage(msg.content)}
-                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                             >
                               <Copy size={15} className="text-gray-400" /> Copy
                             </button>
                             <button
                               onClick={() => handleStarMessage(msg.id)}
-                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                             >
                               <Star
                                 size={15}
@@ -868,20 +1054,20 @@ export default function ConversationsPage() {
                                     ? "text-amber-400 fill-amber-400"
                                     : "text-gray-400"
                                 }
-                              />
+                              />{" "}
                               {isStarred ? "Unstar" : "Star"}
                             </button>
                             <div className="border-t border-gray-100 my-1" />
                             <button
                               onClick={() => handleDeleteMessage(msg.id, false)}
-                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-500 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-gray-500 hover:bg-gray-50 flex items-center gap-3"
                             >
                               <Trash2 size={15} className="text-gray-400" />{" "}
                               Delete for me
                             </button>
                             <button
                               onClick={() => handleDeleteMessage(msg.id, true)}
-                              className="w-full text-left px-4 py-2.5 text-[14px] text-red-500 hover:bg-red-50 active:bg-red-100 flex items-center gap-3"
+                              className="w-full text-left px-4 py-2.5 text-[14px] text-red-500 hover:bg-red-50 flex items-center gap-3"
                             >
                               <Trash2 size={15} className="text-red-400" />{" "}
                               Delete for everyone
@@ -918,10 +1104,9 @@ export default function ConversationsPage() {
 
             {/* Input bar */}
             <div className="px-3 py-3 bg-[#f0f2f5] border-t border-gray-200 flex items-center gap-2">
-              {/* AI Suggest button */}
               <button
                 onClick={handleSuggestReply}
-                disabled={suggesting || selectedMessages.length === 0}
+                disabled={suggesting || allSelectedMessages.length === 0}
                 title="AI suggested reply"
                 className="w-10 h-10 bg-white hover:bg-violet-50 disabled:opacity-40 border border-gray-200 text-violet-500 rounded-full flex items-center justify-center transition-colors shadow-sm shrink-0"
               >
@@ -953,10 +1138,11 @@ export default function ConversationsPage() {
           </>
         )}
       </div>
-      {/* Mobile bottom sheet — shows when message menu is active on small screens */}
+
+      {/* Mobile bottom sheet */}
       {activeMessageMenu &&
         (() => {
-          const activeMsg = selectedMessages.find(
+          const activeMsg = allSelectedMessages.find(
             (m) => m.id === activeMessageMenu,
           );
           if (!activeMsg) return null;
@@ -972,17 +1158,14 @@ export default function ConversationsPage() {
                 className="relative bg-white rounded-t-2xl shadow-2xl pb-safe"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Handle */}
                 <div className="flex justify-center pt-3 pb-1">
                   <div className="w-10 h-1 bg-gray-300 rounded-full" />
                 </div>
-                {/* Message preview */}
                 <div className="px-4 py-2 mx-4 mb-2 bg-gray-50 rounded-xl border-l-4 border-[#25D366]">
                   <p className="text-[12px] text-gray-500 truncate">
                     {activeMsg.content}
                   </p>
                 </div>
-                {/* Actions */}
                 <div className="px-2 pb-6">
                   <button
                     onClick={() => {
