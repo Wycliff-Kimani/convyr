@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Navbar from "@/components/dashboard/Navbar";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
+import OnboardingWizard from "@/components/dashboard/OnboardingWizard";
 
 export default function DashboardLayout({
   children,
@@ -25,7 +26,6 @@ export default function DashboardLayout({
     }
   }, [router]);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
@@ -40,6 +40,9 @@ export default function DashboardLayout({
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden relative">
+      {/* Onboarding wizard — shows once for new users */}
+      <OnboardingWizard />
+
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div
