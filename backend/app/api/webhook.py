@@ -131,14 +131,22 @@ async def receive_webhook(request: Request):
             logger.info(f"Message from {sender}: {text}")
 
             phone_number_id = value.get("metadata", {}).get("phone_number_id")
-            business_result = supabase.table("businesses").select("id").eq(
+            business_result = supabase.table("businesses").select("id, whatsapp_access_token, whatsapp_phone_number_id").eq(
                 "whatsapp_phone_number_id", phone_number_id
             ).execute()
-            business_id = business_result.data[0]["id"] if business_result.data else None
+            
+            if not business_result.data:
+                logger.warning(f"No business found for phone_number_id: {phone_number_id}")
+                return {"status": "ok"}
+
+            business_data = business_result.data[0]
+            business_id = business_data["id"]
+            access_token = business_data.get("whatsapp_access_token")
+            actual_phone_id = business_data.get("whatsapp_phone_number_id")
 
             contact_result = supabase.table("contacts").upsert(
                 {"phone_number": sender, "business_id": business_id},
-                on_conflict="phone_number"
+                on_conflict="phone_number,business_id"
             ).execute()
             contact_id = contact_result.data[0]["id"]
 
@@ -163,10 +171,10 @@ async def receive_webhook(request: Request):
                     logger.info(f"Fallback suppressed for {sender} — sent within last {FALLBACK_COOLDOWN_SECONDS}s")
 
             if reply:
-                await send_typing_indicator(msg_id)
+                await send_typing_indicator(msg_id, phone_number_id=actual_phone_id, access_token=access_token)
                 await asyncio.sleep(1)
 
-                await send_whatsapp_message(to=sender, text=reply)
+                await send_whatsapp_message(to=sender, text=reply, phone_number_id=actual_phone_id, access_token=access_token)
 
                 supabase.table("messages").insert({
                     "contact_id": contact_id,
