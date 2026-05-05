@@ -47,6 +47,20 @@ export default function OverviewPage() {
     fetchData();
   }, []);
 
+  const handleMarkReplied = async (messageId: string) => {
+    try {
+      await api.markAsReplied(messageId);
+      // Update local state to reflect the change immediately
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, replied_by_admin: true } : m
+        )
+      );
+    } catch (err) {
+      console.error("Failed to mark message as replied:", err);
+    }
+  };
+
   const inboundMessages = messages.filter((m) => m.direction === "inbound");
   const outboundMessages = messages.filter((m) => m.direction === "outbound");
   const isWhatsAppConnected = !!business?.whatsapp_phone_number_id;
@@ -62,7 +76,7 @@ export default function OverviewPage() {
     const contactMessages = messages.filter((m) => m.contact_id === c.id);
     if (contactMessages.length === 0) return false;
     const lastMsg = contactMessages[contactMessages.length - 1];
-    return lastMsg.direction === "inbound";
+    return lastMsg.direction === "inbound" && !lastMsg.replied_by_admin;
   });
 
   // Missed opportunities — inbound with NO outbound reply within 1 hour
@@ -71,6 +85,10 @@ export default function OverviewPage() {
     const inbound = contactMessages.filter((m) => m.direction === "inbound");
     if (inbound.length === 0) return false;
     const lastInbound = inbound[inbound.length - 1];
+    
+    // If it's already marked as replied by admin, it's not a missed opportunity
+    if (lastInbound.replied_by_admin) return false;
+
     const lastInboundTime = new Date(lastInbound.created_at).getTime();
     const oneHourAgo = Date.now() - 60 * 60 * 1000;
     // Only count if the message is older than 1 hour (so it had time to be replied)
@@ -444,37 +462,54 @@ export default function OverviewPage() {
                             {formatDateTime(message.created_at)}
                           </p>
                         </div>
-                        {isAutoReplied && (
+                        {isAutoReplied ? (
                           <p className="text-[10px] text-blue-500 font-medium">
                             Convyr: Auto-replied
                           </p>
-                        )}
+                        ) : message.replied_by_admin ? (
+                          <p className="text-[10px] text-gray-400 font-medium">
+                            Admin replied
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    {!isAutoReplied ? (
-                      <button
-                        onClick={() =>
-                          router.push(
-                            `/conversations?contact=${message.contacts?.phone_number}`,
-                          )
-                        }
-                        className="text-[10px] font-bold text-white bg-[#25D366] px-3 py-1.5 rounded-lg hover:bg-[#128C7E] transition-colors"
-                      >
-                        REPLY NOW
-                      </button>
+                    {!isAutoReplied && !message.replied_by_admin ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleMarkReplied(message.id)}
+                          className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          MARK AS REPLIED
+                        </button>
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/conversations?contact=${message.contacts?.phone_number}`,
+                            )
+                          }
+                          className="text-[10px] font-bold text-white bg-[#25D366] px-3 py-1.5 rounded-lg hover:bg-[#128C7E] transition-colors"
+                        >
+                          REPLY NOW
+                        </button>
+                      </div>
                     ) : (
-                      <button
-                        onClick={() =>
-                          router.push(
-                            `/conversations?contact=${message.contacts?.phone_number}`,
-                          )
-                        }
-                        className="text-[10px] font-medium text-gray-400 hover:text-gray-600 underline underline-offset-2"
-                      >
-                        View Chat
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {message.replied_by_admin && (
+                          <span className="text-[10px] font-medium text-gray-400 px-2">Replied</span>
+                        )}
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/conversations?contact=${message.contacts?.phone_number}`,
+                            )
+                          }
+                          className="text-[10px] font-medium text-gray-400 hover:text-gray-600 underline underline-offset-2"
+                        >
+                          View Chat
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

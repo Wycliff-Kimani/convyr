@@ -94,6 +94,11 @@ export const api = {
       },
     ),
 
+  markAsReplied: (message_id: string) =>
+    apiRequest(`/messages/${message_id}/mark-replied`, {
+      method: "POST",
+    }),
+
   // Automations
   getAutomations: () =>
     apiRequest<{ automations: Automation[]; total: number }>("/automations"),
@@ -179,6 +184,7 @@ export interface Message {
   created_at: string;
   deleted_for_me: boolean;
   deleted_for_everyone: boolean;
+  replied_by_admin?: boolean;
   contacts: {
     name: string | null;
     phone_number: string;

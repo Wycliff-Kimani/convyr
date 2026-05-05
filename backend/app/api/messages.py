@@ -7,6 +7,7 @@ from app.services.auth import decode_access_token
 from app.services.whatsapp import send_whatsapp_message
 import logging
 import httpx
+import asyncio
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -126,3 +127,20 @@ async def delete_message(message_id: str, delete_for_everyone: bool = False, use
         }).eq("id", message_id).execute()
 
     return {"status": "deleted", "message_id": message_id, "delete_for_everyone": delete_for_everyone}
+
+
+@router.post("/messages/{message_id}/mark-replied")
+async def mark_message_as_replied(message_id: str, user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+
+    # Verify message belongs to this business
+    result = supabase.table("messages").select("id").eq("id", message_id).eq("business_id", business_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Message not found.")
+
+    # Update the replied_by_admin status
+    supabase.table("messages").update({
+        "replied_by_admin": True
+    }).eq("id", message_id).execute()
+
+    return {"status": "success", "message_id": message_id, "replied_by_admin": True}
