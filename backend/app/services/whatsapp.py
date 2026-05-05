@@ -34,7 +34,11 @@ async def send_whatsapp_message(to: str, text: str, phone_number_id: str = None,
             logger.error(f"HTTP error sending message to {to}: {e.response.text}")
             raise
         except Exception as e:
-            logger.error(f"Error sending messag, phone_number_id: str = None, access_token: str = None):
+            logger.error(f"Error sending message to {to}: {str(e)}")
+            raise
+
+
+async def send_typing_indicator(message_id: str, phone_number_id: str = None, access_token: str = None):
     """
     Shows typing indicator (3 dots) for up to 25 seconds or until a message is sent.
     This also marks the message as read (blue ticks).
@@ -44,20 +48,13 @@ async def send_whatsapp_message(to: str, text: str, phone_number_id: str = None,
 
     url = f"https://graph.facebook.com/v22.0/{pn_id}/messages"
     headers = {
-        "Authorization": f"Bearer {token
-    """
-    url = f"https://graph.facebook.com/v22.0/{settings.WHATSAPP_PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
     payload = {
         "messaging_product": "whatsapp",
         "status": "read",
-        "message_id": message_id,
-        "typing_indicator": {
-            "type": "text"
-        }
+        "message_id": message_id
     }
 
     async with httpx.AsyncClient() as client:
