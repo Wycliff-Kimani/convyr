@@ -41,8 +41,22 @@ async def get_messages(user=Depends(get_current_user)):
 async def send_message(data: SendMessageRequest, user=Depends(get_current_user)):
     business_id = user.get("business_id")
 
-    # Send via WhatsApp
-    await send_whatsapp_message(to=data.to, text=data.text)
+    # Get the business WhatsApp credentials
+    business_result = supabase.table("businesses").select("whatsapp_phone_number_id, whatsapp_access_token").eq("id", business_id).execute()
+    if not business_result.data:
+        raise HTTPException(status_code=404, detail="Business settings not found.")
+    
+    business_data = business_result.data[0]
+    phone_number_id = business_data.get("whatsapp_phone_number_id")
+    access_token = business_data.get("whatsapp_access_token")
+
+    # Send via WhatsApp using business-specific credentials
+    await send_whatsapp_message(
+        to=data.to, 
+        text=data.text, 
+        phone_number_id=phone_number_id, 
+        access_token=access_token
+    )
 
     # Look up contact by phone number and business_id
     contact = supabase.table("contacts").select("id").eq("phone_number", data.to).eq("business_id", business_id).execute()
