@@ -5,15 +5,15 @@ from app.config import settings
 
 supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
-COOLDOWN_HOURS = 4
+FALLBACK_REPLY_HASH = hashlib.md5("__fallback__".encode()).hexdigest()
 
 
 def get_reply_hash(reply_text: str) -> str:
     return hashlib.md5(reply_text.strip().lower().encode()).hexdigest()
 
 
-async def was_reply_sent_recently(contact_id: str, reply_hash: str) -> bool:
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=COOLDOWN_HOURS)).isoformat()
+async def was_reply_sent_recently(contact_id: str, reply_hash: str, cooldown_minutes: int) -> bool:
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=cooldown_minutes)).isoformat()
     result = supabase.table("contact_reply_history").select("id").eq(
         "contact_id", contact_id
     ).eq(
@@ -39,30 +39,33 @@ async def get_matching_automation(message_text: str, contact_id: str, business_i
 
     text_lower = message_text.lower()
 
-    keyword_map = {}
-    any_message_response = None
+    keyword_automations = []
+    any_message_automation = None
 
     for rule in automations:
         if rule["trigger_type"] == "contains_keyword" and rule["keyword"]:
-            keyword_map[rule["keyword"].lower()] = rule["response"]
+            keyword_automations.append(rule)
         elif rule["trigger_type"] == "any_message":
-            any_message_response = rule["response"]
+            any_message_automation = rule
 
-    matched_reply = None
+    matched_rule = None
 
-    for keyword, response in keyword_map.items():
-        if keyword in text_lower:
-            matched_reply = response
+    for rule in keyword_automations:
+        if rule["keyword"].lower() in text_lower:
+            matched_rule = rule
             break
 
-    if not matched_reply and any_message_response:
-        matched_reply = any_message_response
+    if not matched_rule and any_message_automation:
+        matched_rule = any_message_automation
 
-    if not matched_reply:
+    if not matched_rule:
         return None
 
+    matched_reply = matched_rule["response"]
+    cooldown_minutes = matched_rule.get("cooldown_minutes", 240)
+
     reply_hash = get_reply_hash(matched_reply)
-    already_sent = await was_reply_sent_recently(contact_id, reply_hash)
+    already_sent = await was_reply_sent_recently(contact_id, reply_hash, cooldown_minutes)
 
     if already_sent:
         return None

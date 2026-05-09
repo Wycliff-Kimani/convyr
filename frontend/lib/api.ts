@@ -54,6 +54,12 @@ export const api = {
   // Business
   getBusiness: () => apiRequest<Business>("/business"),
 
+  updateBusinessSettings: (data: UpdateBusinessSettingsInput) =>
+    apiRequest<Business>("/business/settings", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
   connectWhatsApp: (code: string) =>
     apiRequest<Business>("/business/connect-whatsapp", {
       method: "POST",
@@ -153,7 +159,12 @@ export interface Business {
   whatsapp_business_account_id: string | null;
   subscription_plan: string;
   subscription_status: string;
+  fallback_cooldown_minutes: number;
   created_at: string;
+}
+
+export interface UpdateBusinessSettingsInput {
+  fallback_cooldown_minutes: number;
 }
 
 export interface Contact {
@@ -199,6 +210,7 @@ export interface Automation {
   keyword: string | null;
   response: string;
   is_active: boolean;
+  cooldown_minutes: number;
   created_at: string;
   updated_at: string;
 }
@@ -209,6 +221,7 @@ export interface CreateAutomationInput {
   keyword?: string;
   response: string;
   is_active: boolean;
+  cooldown_minutes: number;
 }
 
 export interface Payment {

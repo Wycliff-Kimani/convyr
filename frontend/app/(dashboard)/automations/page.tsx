@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, Automation, CreateAutomationInput } from "@/lib/api";
+import { api, Automation, Business, CreateAutomationInput } from "@/lib/api";
 import {
   Zap,
   Plus,
@@ -9,42 +9,141 @@ import {
   ToggleLeft,
   ToggleRight,
   Edit3,
-  Save,
   X,
+  Clock,
+  MessageSquareOff,
+  Save,
 } from "lucide-react";
+
+const COOLDOWN_PRESETS = [
+  { label: "15 min", value: 15 },
+  { label: "30 min", value: 30 },
+  { label: "1 hour", value: 60 },
+  { label: "4 hours", value: 240 },
+  { label: "8 hours", value: 480 },
+  { label: "24 hours", value: 1440 },
+];
+
+const FALLBACK_PRESETS = [
+  { label: "15 min", value: 15 },
+  { label: "30 min", value: 30 },
+  { label: "1 hour", value: 60 },
+  { label: "4 hours", value: 240 },
+];
+
+function formatCooldown(minutes: number): string {
+  if (minutes < 60) return `${minutes}m cooldown`;
+  if (minutes % 60 === 0) return `${minutes / 60}h cooldown`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m cooldown`;
+}
+
+function CooldownSelector({
+  value,
+  onChange,
+  presets,
+}: {
+  value: number;
+  onChange: (val: number) => void;
+  presets: { label: string; value: number }[];
+}) {
+  const isCustom = !presets.find((p) => p.value === value);
+  const [showCustom, setShowCustom] = useState(isCustom);
+  const [customVal, setCustomVal] = useState(isCustom ? String(value) : "");
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        {presets.map((preset) => (
+          <button
+            key={preset.value}
+            type="button"
+            onClick={() => {
+              onChange(preset.value);
+              setShowCustom(false);
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+              value === preset.value && !showCustom
+                ? "bg-[#25D366] border-[#25D366] text-white"
+                : "bg-white border-gray-200 text-gray-500 hover:border-[#25D366] hover:text-[#25D366]"
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setShowCustom(true)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+            showCustom
+              ? "bg-[#25D366] border-[#25D366] text-white"
+              : "bg-white border-gray-200 text-gray-500 hover:border-[#25D366] hover:text-[#25D366]"
+          }`}
+        >
+          Custom
+        </button>
+      </div>
+      {showCustom && (
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            placeholder="e.g. 90"
+            value={customVal}
+            onChange={(e) => {
+              setCustomVal(e.target.value);
+              const parsed = parseInt(e.target.value);
+              if (!isNaN(parsed) && parsed >= 1) onChange(parsed);
+            }}
+            className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/5 transition-all"
+          />
+          <span className="text-xs text-gray-400">minutes</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AutomationsPage() {
   const [automations, setAutomations] = useState<Automation[]>([]);
+  const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingFallback, setSavingFallback] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [fallbackCooldown, setFallbackCooldown] = useState(30);
   const [form, setForm] = useState<CreateAutomationInput>({
     name: "",
     trigger_type: "contains_keyword",
     keyword: "",
     response: "",
     is_active: true,
+    cooldown_minutes: 240,
   });
 
-  const fetchAutomations = async () => {
+  const fetchData = async () => {
     try {
-      const res = await api.getAutomations();
-      // Ensure we have a clean array even if API returns undefined/null
-      setAutomations(res.automations || []);
+      const [automationsRes, businessRes] = await Promise.all([
+        api.getAutomations(),
+        api.getBusiness(),
+      ]);
+      setAutomations(automationsRes.automations || []);
+      setBusiness(businessRes);
+      setFallbackCooldown(businessRes.fallback_cooldown_minutes ?? 30);
     } catch (err) {
-      console.error("Failed to fetch automations:", err);
+      console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAutomations();
+    fetchData();
   }, []);
 
   const handleSave = async () => {
     if (!form.name || !form.response) return;
+    if (form.cooldown_minutes < 1) return;
     setSaving(true);
     try {
       if (editingId) {
@@ -53,11 +152,25 @@ export default function AutomationsPage() {
         await api.createAutomation(form);
       }
       resetForm();
-      await fetchAutomations();
+      await fetchData();
     } catch (err) {
       console.error("Failed to save automation:", err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveFallback = async () => {
+    if (fallbackCooldown < 1) return;
+    setSavingFallback(true);
+    try {
+      await api.updateBusinessSettings({
+        fallback_cooldown_minutes: fallbackCooldown,
+      });
+    } catch (err) {
+      console.error("Failed to save fallback cooldown:", err);
+    } finally {
+      setSavingFallback(false);
     }
   };
 
@@ -68,6 +181,7 @@ export default function AutomationsPage() {
       keyword: "",
       response: "",
       is_active: true,
+      cooldown_minutes: 240,
     });
     setShowForm(false);
     setEditingId(null);
@@ -80,6 +194,7 @@ export default function AutomationsPage() {
       keyword: automation.keyword || "",
       response: automation.response,
       is_active: automation.is_active,
+      cooldown_minutes: automation.cooldown_minutes ?? 240,
     });
     setEditingId(automation.id);
     setShowForm(true);
@@ -91,7 +206,7 @@ export default function AutomationsPage() {
       await api.updateAutomation(automation.id, {
         is_active: !automation.is_active,
       });
-      await fetchAutomations();
+      await fetchData();
     } catch (err) {
       console.error("Failed to toggle automation:", err);
     }
@@ -106,7 +221,7 @@ export default function AutomationsPage() {
       return;
     try {
       await api.deleteAutomation(id);
-      await fetchAutomations();
+      await fetchData();
     } catch (err) {
       console.error("Failed to delete automation:", err);
     }
@@ -134,6 +249,39 @@ export default function AutomationsPage() {
         )}
       </div>
 
+      {/* Fallback Cooldown Settings */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="p-2 bg-orange-50 rounded-lg">
+            <MessageSquareOff size={16} className="text-orange-400" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-[#0F172A]">
+              Fallback Reply Cooldown
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              When a customer message doesn't match any rule, we send a default
+              reply. Set how long to wait before sending it again to the same
+              contact.
+            </p>
+          </div>
+        </div>
+        <CooldownSelector
+          value={fallbackCooldown}
+          onChange={setFallbackCooldown}
+          presets={FALLBACK_PRESETS}
+        />
+        <button
+          onClick={handleSaveFallback}
+          disabled={savingFallback || fallbackCooldown < 1}
+          className="mt-4 flex items-center gap-2 bg-[#0F172A] hover:bg-[#1e293b] disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+        >
+          <Save size={14} />
+          {savingFallback ? "Saving..." : "Save Fallback Setting"}
+        </button>
+      </div>
+
+      {/* Automation Form */}
       {showForm && (
         <div className="bg-white rounded-2xl border-2 border-[#25D366]/20 shadow-sm p-4 sm:p-6 flex flex-col gap-5">
           <div className="flex items-center justify-between">
@@ -219,12 +367,25 @@ export default function AutomationsPage() {
                 className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/5 transition-all resize-none"
               />
             </div>
+
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                <Clock size={12} />
+                Cooldown — Minimum time before sending this reply again to the
+                same contact
+              </label>
+              <CooldownSelector
+                value={form.cooldown_minutes}
+                onChange={(val) => setForm({ ...form, cooldown_minutes: val })}
+                presets={COOLDOWN_PRESETS}
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={handleSave}
-              disabled={saving || !form.name || !form.response}
+              disabled={saving || !form.name || !form.response || form.cooldown_minutes < 1}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#128C7E] disabled:opacity-60 text-white px-8 py-3 rounded-xl text-sm font-bold shadow-lg shadow-[#25D366]/20 transition-all"
             >
               {saving ? "Saving..." : editingId ? "Update Rule" : "Launch Rule"}
@@ -239,6 +400,7 @@ export default function AutomationsPage() {
         </div>
       )}
 
+      {/* Automations List */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 sm:px-6 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -298,7 +460,7 @@ export default function AutomationsPage() {
                       <h3 className="text-sm font-bold text-[#0F172A]">
                         {automation.name}
                       </h3>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span
                           className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
                             automation.is_active
@@ -313,6 +475,11 @@ export default function AutomationsPage() {
                           {automation.trigger_type === "contains_keyword"
                             ? `IF MESSAGE HAS: "${automation.keyword}"`
                             : "TRIGGERS ON EVERY MESSAGE"}
+                        </span>
+                        <span className="text-[10px] text-gray-300">•</span>
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-gray-400">
+                          <Clock size={9} />
+                          {formatCooldown(automation.cooldown_minutes ?? 240)}
                         </span>
                       </div>
                     </div>

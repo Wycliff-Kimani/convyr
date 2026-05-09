@@ -10,7 +10,7 @@ from supabase import create_client
 
 from app.config import settings
 from app.services.whatsapp import send_whatsapp_message, send_typing_indicator
-from app.services.automation import get_matching_automation
+from app.services.automation import get_matching_automation, was_reply_sent_recently, record_reply_sent, FALLBACK_REPLY_HASH
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,10 +22,6 @@ FALLBACK_REPLY = "Thanks for reaching out! Our team will get back to you shortly
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_MAX = 20
 _rate_limit_store: dict = defaultdict(list)
-
-# Fallback cooldown: only send fallback once every 120 seconds per contact
-FALLBACK_COOLDOWN_SECONDS = 120
-_fallback_sent_at: dict = {}  # contact_id -> timestamp
 
 
 def is_rate_limited(identifier: str) -> bool:
@@ -40,23 +36,7 @@ def is_rate_limited(identifier: str) -> bool:
     return False
 
 
-def fallback_recently_sent(contact_id: str) -> bool:
-    last_sent = _fallback_sent_at.get(contact_id)
-    if last_sent and (time.time() - last_sent) < FALLBACK_COOLDOWN_SECONDS:
-        return True
-    return False
-
-
-def record_fallback_sent(contact_id: str):
-    _fallback_sent_at[contact_id] = time.time()
-
-
 def verify_meta_signature(payload_bytes: bytes, signature_header: str | None) -> bool:
-    """
-    Verify the request came from Meta using X-Hub-Signature-256.
-    Meta signs the raw request body with META_APP_SECRET via HMAC-SHA256.
-    If META_APP_SECRET is not set, skip verification (safe for local dev).
-    """
     if not settings.META_APP_SECRET:
         logger.warning("META_APP_SECRET not set — skipping signature verification")
         return True
@@ -131,10 +111,12 @@ async def receive_webhook(request: Request):
             logger.info(f"Message from {sender}: {text}")
 
             phone_number_id = value.get("metadata", {}).get("phone_number_id")
-            business_result = supabase.table("businesses").select("id, whatsapp_access_token, whatsapp_phone_number_id").eq(
-                "whatsapp_phone_number_id", phone_number_id
-            ).execute()
-            
+
+            # Fetch business including fallback cooldown setting
+            business_result = supabase.table("businesses").select(
+                "id, whatsapp_access_token, whatsapp_phone_number_id, fallback_cooldown_minutes"
+            ).eq("whatsapp_phone_number_id", phone_number_id).execute()
+
             if not business_result.data:
                 logger.warning(f"No business found for phone_number_id: {phone_number_id}")
                 return {"status": "ok"}
@@ -143,6 +125,7 @@ async def receive_webhook(request: Request):
             business_id = business_data["id"]
             access_token = business_data.get("whatsapp_access_token")
             actual_phone_id = business_data.get("whatsapp_phone_number_id")
+            fallback_cooldown_minutes = business_data.get("fallback_cooldown_minutes", 30)
 
             contact_result = supabase.table("contacts").upsert(
                 {"phone_number": sender, "business_id": business_id},
@@ -162,13 +145,18 @@ async def receive_webhook(request: Request):
 
             reply = await get_matching_automation(text, contact_id, business_id)
 
-            # Fallback: only send if no automation matched AND not sent recently
+            # Fallback: DB-backed cooldown via contact_reply_history
             if not reply:
-                if not fallback_recently_sent(contact_id):
+                fallback_suppressed = await was_reply_sent_recently(
+                    contact_id, FALLBACK_REPLY_HASH, fallback_cooldown_minutes
+                )
+                if not fallback_suppressed:
                     reply = FALLBACK_REPLY
-                    record_fallback_sent(contact_id)
+                    await record_reply_sent(contact_id, business_id, FALLBACK_REPLY_HASH)
                 else:
-                    logger.info(f"Fallback suppressed for {sender} — sent within last {FALLBACK_COOLDOWN_SECONDS}s")
+                    logger.info(
+                        f"Fallback suppressed for {sender} — sent within last {fallback_cooldown_minutes} minutes"
+                    )
 
             if reply:
                 await send_typing_indicator(msg_id, phone_number_id=actual_phone_id, access_token=access_token)
