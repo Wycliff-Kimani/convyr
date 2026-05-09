@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     META_APP_SECRET: str = ""
 
     ANTHROPIC_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
 
     # ========================
     # Supabase
@@ -81,7 +82,7 @@ class Settings(BaseSettings):
         return base64.b64encode(credentials.encode()).decode()
 
     model_config = {
-        "env_file": os.path.join(os.path.dirname(__file__), "../../.env"),
+        "env_file": os.path.join(os.path.dirname(__file__), "../.env"),
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
         "extra": "ignore",
