@@ -6,18 +6,16 @@ import {
   LayoutDashboard,
   MessageSquare,
   Zap,
+  Package,
   Users,
-  BarChart2,
-  Settings,
 } from "lucide-react";
 
 const navItems = [
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/conversations", label: "Conversations", icon: MessageSquare },
   { href: "/automations", label: "Automations", icon: Zap },
+  { href: "/products", label: "Products", icon: Package },
   { href: "/contacts", label: "Contacts", icon: Users },
-  { href: "/analytics", label: "Analytics", icon: BarChart2 },
-  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function MobileBottomNav() {
@@ -25,7 +23,7 @@ export default function MobileBottomNav() {
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2">
-      {navItems.slice(0, 5).map(({ href, label, icon: Icon }) => {
+      {navItems.map(({ href, label, icon: Icon }) => {
         const active = pathname === href;
         return (
           <Link

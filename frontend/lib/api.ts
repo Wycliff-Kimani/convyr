@@ -140,6 +140,60 @@ export const api = {
 
   getPaymentHistory: () =>
     apiRequest<{ payments: Payment[]; total: number }>("/payments/history"),
+
+  // Products
+  getProducts: (params?: { search?: string; category?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append("search", params.search);
+    if (params?.category) query.append("category", params.category);
+    const qs = query.toString();
+    return apiRequest<{ products: Product[]; total: number }>(
+      `/products${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  createProduct: (data: ProductInput) =>
+    apiRequest<Product>("/products", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateProduct: (id: string, data: Partial<ProductInput>) =>
+    apiRequest<Product>(`/products/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteProduct: (id: string) =>
+    apiRequest(`/products/${id}`, { method: "DELETE" }),
+
+  uploadProductsCSV: async (file: File) => {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("convyr_token")
+        : null;
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch(`${API_BASE_URL}/products/upload-csv`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ detail: "Upload failed" }));
+      throw new Error(error.detail || "Upload failed");
+    }
+    return response.json() as Promise<{
+      message: string;
+      imported: number;
+      skipped: number;
+    }>;
+  },
+
+  getProductCategories: () =>
+    apiRequest<{ categories: string[] }>("/products/categories"),
 };
 
 // Types
@@ -233,4 +287,31 @@ export interface Payment {
   status: string;
   plan: string;
   created_at: string;
+}
+
+export interface Product {
+  id: string;
+  business_id: string;
+  sku: string | null;
+  name: string;
+  price: number | null;
+  stock: number;
+  description: string | null;
+  category: string | null;
+  images: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductInput {
+  sku?: string;
+  name: string;
+  price?: number;
+  stock?: number;
+  description?: string;
+  category?: string;
+  images?: string[];
+  metadata?: Record<string, unknown>;
+  is_active?: boolean;
 }
