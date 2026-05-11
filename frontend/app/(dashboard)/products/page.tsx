@@ -644,20 +644,20 @@ export default function ProductsPage() {
             </div>
 
             {/* Pagination */}
-<div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center justify-between w-full gap-4 flex-wrap">
-  <span className="text-xs text-gray-400">
-    {total === 0 ? "No results" : `Showing ${startRecord}–${endRecord} of ${total}`}
-  </span>
-  <div className="flex items-center gap-1">
-    <button
-      type="button"
-      onClick={() => setPage(1)}
-      disabled={page === 1}
-      className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-    >
-      <ChevronLeft size={14} />
-      <ChevronLeft size={14} className="-ml-3" />
-    </button>
+            <div className="flex items-center justify-between w-full mt-4 px-4 py-3 border-t border-gray-200">
+              <span className="text-xs text-gray-400">
+                {total === 0 ? "No results" : `Showing ${startRecord}–${endRecord} of ${total}`}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage(1)}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronLeft size={14} />
+                  <ChevronLeft size={14} className="-ml-3" />
+                </button>
     <button
       type="button"
       onClick={() => setPage((p) => Math.max(p - 1, 1))}
