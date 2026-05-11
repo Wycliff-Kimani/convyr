@@ -286,13 +286,7 @@ async def upload_products_csv(
 
         inserted = 0
         for product in products_to_insert:
-            if product["sku"]:
-                supabase.table("products").upsert(
-                    product,
-                    on_conflict="sku,business_id"
-                ).execute()
-            else:
-                supabase.table("products").insert(product).execute()
+            supabase.table("products").insert(product).execute()
             inserted += 1
 
         return {
