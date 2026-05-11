@@ -711,9 +711,6 @@ export default function ProductsPage() {
           </button>
         </div>
       </div>
-          </>
-        )}
-      </div>
     </div>
   );
 }
