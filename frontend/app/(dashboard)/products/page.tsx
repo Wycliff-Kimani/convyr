@@ -527,19 +527,36 @@ export default function ProductsPage() {
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
               <Package size={24} className="text-gray-300" />
             </div>
-            <p className="text-base font-medium text-gray-600">No products yet</p>
-            <p className="text-sm text-gray-400 mt-1 max-w-xs">
-              Add products manually or import a CSV file. The AI agent will use these to answer customer questions.
-            </p>
-            <div className="flex items-center gap-3 mt-6">
-              <button onClick={() => setShowForm(true)} className="text-[#25D366] font-bold text-sm hover:underline">
-                + Add manually
-              </button>
-              <span className="text-gray-300">or</span>
-              <button onClick={() => fileInputRef.current?.click()} className="text-[#25D366] font-bold text-sm hover:underline">
-                Import CSV
-              </button>
-            </div>
+            {total > 0 ? (
+              <>
+                <p className="text-base font-medium text-gray-600">No products on this page</p>
+                <p className="text-sm text-gray-400 mt-1 max-w-xs">
+                  You've navigated beyond the available product pages.
+                </p>
+                <button
+                  onClick={() => setPage(1)}
+                  className="mt-6 text-[#25D366] font-bold text-sm hover:underline flex items-center gap-2"
+                >
+                  ← Back to page 1
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-medium text-gray-600">No products yet</p>
+                <p className="text-sm text-gray-400 mt-1 max-w-xs">
+                  Add products manually or import a CSV file. The AI agent will use these to answer customer questions.
+                </p>
+                <div className="flex items-center gap-3 mt-6">
+                  <button onClick={() => setShowForm(true)} className="text-[#25D366] font-bold text-sm hover:underline">
+                    + Add manually
+                  </button>
+                  <span className="text-gray-300">or</span>
+                  <button onClick={() => fileInputRef.current?.click()} className="text-[#25D366] font-bold text-sm hover:underline">
+                    Import CSV
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <>
