@@ -299,6 +299,7 @@ export interface Product {
   description: string | null;
   category: string | null;
   images: string[];
+  metadata: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
   updated_at: string;
