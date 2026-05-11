@@ -80,7 +80,7 @@ async def get_products(
     business_id = user.get("business_id")
 
     # Count query
-    count_query = supabase.table("products").select("id", count="exact").eq("business_id", business_id)
+    count_query = supabase.table("products").select("id", count="estimated").eq("business_id", business_id)
     if is_active is not None:
         count_query = count_query.eq("is_active", is_active)
     if category:

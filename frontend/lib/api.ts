@@ -206,6 +206,9 @@ export const api = {
 
   getProductCategories: () =>
     apiRequest<{ categories: string[] }>("/products/categories"),
+
+  // Dashboard
+  getDashboardStats: () => apiRequest<DashboardStats>("/dashboard/stats"),
 };
 
 // Types
@@ -299,6 +302,31 @@ export interface Payment {
   status: string;
   plan: string;
   created_at: string;
+}
+
+export interface RecentActivityItem {
+  id: string;
+  contact_id: string;
+  content: string;
+  direction: string;
+  created_at: string;
+  replied_by_admin: boolean;
+  was_auto_replied: boolean;
+  contacts: { name: string | null; phone_number: string } | null;
+}
+
+export interface DashboardStats {
+  is_whatsapp_connected: boolean;
+  total_contacts: number;
+  outbound_count: number;
+  new_leads: number;
+  needs_reply: number;
+  missed_opportunities: number;
+  orders_tracked: number;
+  estimated_hours_saved: number;
+  estimated_kes_saved: number;
+  sales_closed: number;
+  recent_activity: RecentActivityItem[];
 }
 
 export interface Product {

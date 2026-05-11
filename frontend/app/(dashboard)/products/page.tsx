@@ -239,6 +239,16 @@ export default function ProductsPage() {
   const startRecord = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const endRecord = Math.min(page * pageSize, total);
 
+  const getPageNumbers = (): (number | "...")[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | "...")[] = [1, 2];
+    if (page > 4) pages.push("...");
+    for (let p = Math.max(3, page - 1); p <= Math.min(totalPages - 2, page + 1); p++) pages.push(p);
+    if (page < totalPages - 3) pages.push("...");
+    pages.push(totalPages - 1, totalPages);
+    return [...new Set(pages)] as (number | "...")[];
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -626,41 +636,25 @@ export default function ProductsPage() {
             </div>
 
             {/* Pagination */}
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-4">
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-4 flex-wrap">
               <span className="text-xs text-gray-400">
                 {total === 0 ? "No results" : `Showing ${startRecord}–${endRecord} of ${total}`}
               </span>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage(1)}
-                  disabled={page === 1}
-                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors text-xs font-medium px-2"
-                >
-                  First
+                <button onClick={() => setPage(1)} disabled={page === 1} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors">
+                  <ChevronLeft size={14} />
                 </button>
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <span className="text-xs text-gray-600 px-2 font-medium">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                >
-                  <ChevronRight size={16} />
-                </button>
-                <button
-                  onClick={() => setPage(totalPages)}
-                  disabled={page === totalPages}
-                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors text-xs font-medium px-2"
-                >
-                  Last
+                {getPageNumbers().map((p, i) =>
+                  p === "..." ? (
+                    <span key={`ellipsis-${i}`} className="px-1 text-gray-300 text-xs">…</span>
+                  ) : (
+                    <button key={p} onClick={() => setPage(p as number)} className={`min-w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${page === p ? "bg-[#25D366] text-white" : "text-gray-500 hover:bg-gray-100"}`}>
+                      {p}
+                    </button>
+                  )
+                )}
+                <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors">
+                  <ChevronRight size={14} />
                 </button>
               </div>
             </div>

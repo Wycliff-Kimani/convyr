@@ -12,6 +12,7 @@ from app.api.payments import router as payments_router
 from app.api.businesses import router as businesses_router
 from app.api.suggest import router as suggest_router
 from app.api.products import router as products_router
+from app.api.dashboard import router as dashboard_router
 
 
 @asynccontextmanager
@@ -50,6 +51,7 @@ app.include_router(payments_router, prefix=API_PREFIX, tags=["Payments"])
 app.include_router(businesses_router, prefix=API_PREFIX, tags=["Business"])
 app.include_router(suggest_router, prefix=API_PREFIX, tags=["AI"])
 app.include_router(products_router, prefix=API_PREFIX, tags=["Products"])
+app.include_router(dashboard_router, prefix=API_PREFIX, tags=["Dashboard"])
 
 
 @app.get("/health", tags=["Health"])
