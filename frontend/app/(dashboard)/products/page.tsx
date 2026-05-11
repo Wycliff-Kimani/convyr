@@ -94,14 +94,14 @@ export default function ProductsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchProducts = async (p = page, ps = pageSize) => {
+  const fetchProducts = async () => {
     setLoading(true);
     try {
       const res = await api.getProducts({
         search,
         category: selectedCategory,
-        page: p,
-        page_size: ps,
+        page,
+        page_size: pageSize,
       });
       setProducts(res.products || []);
       setTotal(res.total || 0);
@@ -126,17 +126,25 @@ export default function ProductsPage() {
     fetchCategories();
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(1);
-      fetchProducts(1, pageSize);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search, selectedCategory]);
+  const lastSearch = useRef(search);
+  const lastCategory = useRef(selectedCategory);
 
   useEffect(() => {
-    fetchProducts(page, pageSize);
-  }, [page, pageSize]);
+    const isFilterChange = search !== lastSearch.current || selectedCategory !== lastCategory.current;
+
+    if (isFilterChange) {
+      lastSearch.current = search;
+      lastCategory.current = selectedCategory;
+      setPage(1);
+      return; // exit — the page state change will re-trigger this effect
+    }
+
+    const timer = setTimeout(() => {
+      fetchProducts();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [page, pageSize, search, selectedCategory]);
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
@@ -157,7 +165,7 @@ export default function ProductsPage() {
         await api.createProduct(payload);
       }
       resetForm();
-      await fetchProducts(page, pageSize);
+      await fetchProducts();
       await fetchCategories();
     } catch (err) {
       console.error("Failed to save product:", err);
@@ -190,7 +198,7 @@ export default function ProductsPage() {
   const handleToggle = async (product: Product) => {
     try {
       await api.updateProduct(product.id, { is_active: !product.is_active });
-      await fetchProducts(page, pageSize);
+      await fetchProducts();
     } catch (err) {
       console.error("Failed to toggle product:", err);
     }
@@ -200,7 +208,7 @@ export default function ProductsPage() {
     if (!confirm("Delete this product? This cannot be undone.")) return;
     try {
       await api.deleteProduct(id);
-      await fetchProducts(page, pageSize);
+      await fetchProducts();
       await fetchCategories();
     } catch (err) {
       console.error("Failed to delete product:", err);
@@ -216,7 +224,7 @@ export default function ProductsPage() {
       const result = await api.uploadProductsCSV(file);
       setUploadResult(result);
       setPage(1);
-      await fetchProducts(1, pageSize);
+      await fetchProducts();
       await fetchCategories();
     } catch (err: any) {
       setUploadResult({ message: err.message || "Upload failed.", imported: 0, skipped: 0 });
