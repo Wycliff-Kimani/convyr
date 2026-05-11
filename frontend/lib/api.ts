@@ -142,14 +142,26 @@ export const api = {
     apiRequest<{ payments: Payment[]; total: number }>("/payments/history"),
 
   // Products
-  getProducts: (params?: { search?: string; category?: string }) => {
+  getProducts: (params?: {
+    search?: string;
+    category?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
     const query = new URLSearchParams();
     if (params?.search) query.append("search", params.search);
     if (params?.category) query.append("category", params.category);
+    if (params?.page) query.append("page", params.page.toString());
+    if (params?.page_size) query.append("page_size", params.page_size.toString());
+
     const qs = query.toString();
-    return apiRequest<{ products: Product[]; total: number }>(
-      `/products${qs ? `?${qs}` : ""}`,
-    );
+    return apiRequest<{
+      products: Product[];
+      total: number;
+      page: number;
+      page_size: number;
+      total_pages: number;
+    }>(`/products${qs ? `?${qs}` : ""}`);
   },
 
   createProduct: (data: ProductInput) =>

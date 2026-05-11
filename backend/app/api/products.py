@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
@@ -15,21 +15,17 @@ security = HTTPBearer()
 
 supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
-# Column name aliases — maps various real-world CSV headers to our internal fields
 COLUMN_ALIASES = {
-    "name":             ["name", "product_name", "product name", "item_name", "item name", "title"],
-    "sku":              ["sku", "product_code", "product code", "code", "item_code", "item code", "barcode"],
-    "price":            ["price", "cost_per_item", "cost per item", "unit_price", "unit price", "selling_price", "selling price", "amount"],
-    "stock":            ["stock", "quantity", "qty", "stock_quantity", "available", "units"],
-    "description":      ["description", "subcategory", "sub_category", "sub category", "details", "notes"],
-    "category":         ["category", "product_category", "product category", "type", "department"],
+    "name":        ["name", "product_name", "product name", "item_name", "item name", "title"],
+    "sku":         ["sku", "product_code", "product code", "code", "item_code", "item code", "barcode"],
+    "price":       ["price", "cost_per_item", "cost per item", "unit_price", "unit price", "selling_price", "selling price", "amount"],
+    "stock":       ["stock", "quantity", "qty", "stock_quantity", "available", "units"],
+    "description": ["description", "subcategory", "sub_category", "sub category", "details", "notes"],
+    "category":    ["category", "product_category", "product category", "type", "department"],
 }
-
-KNOWN_FIELDS = {"name", "sku", "price", "stock", "description", "category"}
 
 
 def resolve_columns(df_columns: list[str]) -> dict:
-    """Map DataFrame columns to internal field names using aliases."""
     col_lower = {c.lower().strip(): c for c in df_columns}
     mapping = {}
     for field, aliases in COLUMN_ALIASES.items():
@@ -77,30 +73,47 @@ async def get_products(
     search: Optional[str] = None,
     category: Optional[str] = None,
     is_active: Optional[bool] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
     user=Depends(get_current_user),
 ):
     business_id = user.get("business_id")
-    query = supabase.table("products").select("*").eq("business_id", business_id)
 
+    # Count query
+    count_query = supabase.table("products").select("id", count="exact").eq("business_id", business_id)
     if is_active is not None:
-        query = query.eq("is_active", is_active)
+        count_query = count_query.eq("is_active", is_active)
     if category:
-        query = query.eq("category", category)
+        count_query = count_query.eq("category", category)
+    if search:
+        count_query = count_query.or_(
+            f"name.ilike.%{search}%,sku.ilike.%{search}%,description.ilike.%{search}%,category.ilike.%{search}%"
+        )
+    count_result = count_query.execute()
+    total = count_result.count or 0
 
-    result = query.order("created_at", desc=True).execute()
+    # Data query with pagination
+    offset = (page - 1) * page_size
+    data_query = supabase.table("products").select("*").eq("business_id", business_id)
+    if is_active is not None:
+        data_query = data_query.eq("is_active", is_active)
+    if category:
+        data_query = data_query.eq("category", category)
+    if search:
+        data_query = data_query.or_(
+            f"name.ilike.%{search}%,sku.ilike.%{search}%,description.ilike.%{search}%,category.ilike.%{search}%"
+        )
+    data_query = data_query.order("created_at", desc=True).range(offset, offset + page_size - 1)
+    result = data_query.execute()
     products = result.data or []
 
-    if search:
-        search_lower = search.lower()
-        products = [
-            p for p in products
-            if search_lower in (p.get("name") or "").lower()
-            or search_lower in (p.get("sku") or "").lower()
-            or search_lower in (p.get("description") or "").lower()
-            or search_lower in (p.get("category") or "").lower()
-        ]
-
-    return {"products": products, "total": len(products)}
+    return {
+        "products": products,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, -(-total // page_size)),  # ceiling division
+    }
 
 
 @router.post("/products")
@@ -179,10 +192,7 @@ async def upload_products_csv(
     business_id = user.get("business_id")
 
     if not file.filename.endswith((".csv", ".xlsx", ".xls")):
-        raise HTTPException(
-            status_code=400,
-            detail="Only CSV and Excel files are supported."
-        )
+        raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported.")
 
     try:
         contents = await file.read()
@@ -192,12 +202,8 @@ async def upload_products_csv(
         else:
             df = pd.read_excel(io.BytesIO(contents))
 
-        # Resolve column aliases
         col_map = resolve_columns(list(df.columns))
-
-        # Identify extra columns not mapped to known fields
         mapped_source_cols = set(col_map.values())
-        all_cols = set(df.columns)
         extra_cols = [c for c in df.columns if c not in mapped_source_cols]
 
         df = df.where(pd.notnull(df), None)
@@ -206,7 +212,6 @@ async def upload_products_csv(
         skipped = 0
 
         for _, row in df.iterrows():
-            # Resolve name — try mapped name, then product_name, then sku, then first column
             name = None
             if "name" in col_map:
                 name = row.get(col_map["name"])
@@ -221,22 +226,21 @@ async def upload_products_csv(
 
             name = str(name).strip()
 
-            # Resolve SKU
             sku = None
             if "sku" in col_map:
                 raw_sku = row.get(col_map["sku"])
                 if raw_sku and str(raw_sku).strip() not in ("", "nan", "None"):
                     sku = str(raw_sku).strip()
 
-            # Resolve price
             price = None
             if "price" in col_map:
                 try:
-                    price = float(row.get(col_map["price"]))
+                    val = row.get(col_map["price"])
+                    if val is not None and str(val).strip() not in ("", "nan", "None"):
+                        price = float(val)
                 except (ValueError, TypeError):
                     price = None
 
-            # Resolve stock
             stock = 0
             if "stock" in col_map:
                 try:
@@ -244,21 +248,18 @@ async def upload_products_csv(
                 except (ValueError, TypeError):
                     stock = 0
 
-            # Resolve description — combine subcategory info if available
             description = None
             if "description" in col_map:
                 raw_desc = row.get(col_map["description"])
                 if raw_desc and str(raw_desc).strip() not in ("", "nan", "None"):
                     description = str(raw_desc).strip()
 
-            # Resolve category
             category = None
             if "category" in col_map:
                 raw_cat = row.get(col_map["category"])
                 if raw_cat and str(raw_cat).strip() not in ("", "nan", "None"):
                     category = str(raw_cat).strip()
 
-            # Store all extra/unmapped columns in metadata
             metadata = {}
             for col in extra_cols:
                 val = row.get(col)
@@ -279,15 +280,15 @@ async def upload_products_csv(
             })
 
         if not products_to_insert:
-            raise HTTPException(
-                status_code=400,
-                detail="No valid products found in the file."
-            )
+            raise HTTPException(status_code=400, detail="No valid products found in the file.")
 
+        # Bulk insert in batches of 100
+        BATCH_SIZE = 100
         inserted = 0
-        for product in products_to_insert:
-            supabase.table("products").insert(product).execute()
-            inserted += 1
+        for i in range(0, len(products_to_insert), BATCH_SIZE):
+            batch = products_to_insert[i:i + BATCH_SIZE]
+            supabase.table("products").insert(batch).execute()
+            inserted += len(batch)
 
         return {
             "message": f"Successfully imported {inserted} products.",
@@ -299,10 +300,7 @@ async def upload_products_csv(
         raise
     except Exception as e:
         logger.error(f"CSV upload error for business {business_id}: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to process file: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
 
 
 @router.get("/products/categories")

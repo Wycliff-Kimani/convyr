@@ -13,6 +13,8 @@ import {
   ToggleRight,
   Save,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Info,
   Download,
 } from "lucide-react";
@@ -54,16 +56,11 @@ const emptyForm: ProductForm = {
   is_active: true,
 };
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
 function downloadTemplateCSV() {
   const headers = ["name", "sku", "price", "stock", "description", "category"];
-  const example = [
-    "Velvet Pillow 45x45cm",
-    "HOR122",
-    "1500",
-    "20",
-    "Soft velvet pillow in cream color",
-    "Pillows",
-  ];
+  const example = ["Velvet Pillow 45x45cm", "HOR122", "1500", "20", "Soft velvet pillow in cream color", "Pillows"];
   const csv = [headers.join(","), example.join(",")].join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
@@ -91,12 +88,24 @@ export default function ProductsPage() {
     imported: number;
     skipped: number;
   } | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (p = page, ps = pageSize) => {
+    setLoading(true);
     try {
-      const res = await api.getProducts({ search, category: selectedCategory });
+      const res = await api.getProducts({
+        search,
+        category: selectedCategory,
+        page: p,
+        page_size: ps,
+      });
       setProducts(res.products || []);
+      setTotal(res.total || 0);
+      setTotalPages(res.total_pages || 1);
     } catch (err) {
       console.error("Failed to fetch products:", err);
     } finally {
@@ -114,16 +123,20 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
-    fetchProducts();
     fetchCategories();
   }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchProducts();
+      setPage(1);
+      fetchProducts(1, pageSize);
     }, 300);
     return () => clearTimeout(timer);
   }, [search, selectedCategory]);
+
+  useEffect(() => {
+    fetchProducts(page, pageSize);
+  }, [page, pageSize]);
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
@@ -144,7 +157,7 @@ export default function ProductsPage() {
         await api.createProduct(payload);
       }
       resetForm();
-      await fetchProducts();
+      await fetchProducts(page, pageSize);
       await fetchCategories();
     } catch (err) {
       console.error("Failed to save product:", err);
@@ -177,7 +190,7 @@ export default function ProductsPage() {
   const handleToggle = async (product: Product) => {
     try {
       await api.updateProduct(product.id, { is_active: !product.is_active });
-      await fetchProducts();
+      await fetchProducts(page, pageSize);
     } catch (err) {
       console.error("Failed to toggle product:", err);
     }
@@ -187,7 +200,7 @@ export default function ProductsPage() {
     if (!confirm("Delete this product? This cannot be undone.")) return;
     try {
       await api.deleteProduct(id);
-      await fetchProducts();
+      await fetchProducts(page, pageSize);
       await fetchCategories();
     } catch (err) {
       console.error("Failed to delete product:", err);
@@ -202,18 +215,20 @@ export default function ProductsPage() {
     try {
       const result = await api.uploadProductsCSV(file);
       setUploadResult(result);
-      await fetchProducts();
+      setPage(1);
+      await fetchProducts(1, pageSize);
       await fetchCategories();
     } catch (err: any) {
-      setUploadResult({
-        message: err.message || "Upload failed.",
-        imported: 0,
-        skipped: 0,
-      });
+      setUploadResult({ message: err.message || "Upload failed.", imported: 0, skipped: 0 });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setPage(1);
   };
 
   const formatPrice = (price: number | null) => {
@@ -221,30 +236,24 @@ export default function ProductsPage() {
     return `KES ${price.toLocaleString("en-KE", { minimumFractionDigits: 2 })}`;
   };
 
+  const startRecord = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endRecord = Math.min(page * pageSize, total);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
-            Products
-          </h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">Products</h1>
           <p className="text-sm text-gray-400 mt-1">
             Manage your product catalog. The AI agent uses this to answer customer inquiries.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
+          <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
           <button
             onClick={() => setShowCsvGuide((v) => !v)}
             className="flex items-center gap-1.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-            title="CSV format guide"
           >
             <Info size={15} />
             <span className="hidden sm:inline">CSV Guide</span>
@@ -255,9 +264,7 @@ export default function ProductsPage() {
             className="flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
           >
             <Upload size={15} />
-            <span className="hidden sm:inline">
-              {uploading ? "Uploading..." : "Import CSV"}
-            </span>
+            <span className="hidden sm:inline">{uploading ? "Uploading..." : "Import CSV"}</span>
           </button>
           {!showForm && (
             <button
@@ -277,29 +284,15 @@ export default function ProductsPage() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
-              <h3 className="text-sm font-bold text-blue-800">
-                CSV / Excel Import Guide
-              </h3>
+              <h3 className="text-sm font-bold text-blue-800">CSV / Excel Import Guide</h3>
             </div>
-            <button
-              onClick={() => setShowCsvGuide(false)}
-              className="text-blue-400 hover:text-blue-600"
-            >
+            <button onClick={() => setShowCsvGuide(false)} className="text-blue-400 hover:text-blue-600">
               <X size={16} />
             </button>
           </div>
           <div className="text-xs text-blue-700 flex flex-col gap-1.5 ml-6">
             <p>
-              <span className="font-bold">Required column:</span>{" "}
-              <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">name</code>
-            </p>
-            <p>
-              <span className="font-bold">Recommended columns:</span>{" "}
-              <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">stock</code>,{" "}
-              <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">price</code>
-            </p>
-            <p>
-              <span className="font-bold">All supported columns:</span>{" "}
+              <span className="font-bold">Recognized columns:</span>{" "}
               <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">name</code>,{" "}
               <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">sku</code>,{" "}
               <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">price</code>,{" "}
@@ -307,8 +300,16 @@ export default function ProductsPage() {
               <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">description</code>,{" "}
               <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">category</code>
             </p>
+            <p>
+              <span className="font-bold">Also recognized:</span>{" "}
+              <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">Product Name</code>,{" "}
+              <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">Product Code</code>,{" "}
+              <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">Cost Per Item</code>,{" "}
+              <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">Quantity</code>,{" "}
+              <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">SubCategory</code>
+            </p>
             <p className="text-blue-600 mt-1">
-              Any extra columns in your file (e.g. delivery fees, supplier, notes) are preserved in the product's metadata and accessible to the AI agent.
+              Any extra columns are preserved in metadata and accessible to the AI agent.
             </p>
           </div>
           <button
@@ -323,17 +324,13 @@ export default function ProductsPage() {
 
       {/* Upload Result Banner */}
       {uploadResult && (
-        <div
-          className={`rounded-xl px-4 py-3 flex items-center justify-between text-sm ${
-            uploadResult.imported > 0
-              ? "bg-green-50 text-green-700 border border-green-200"
-              : "bg-red-50 text-red-700 border border-red-200"
-          }`}
-        >
+        <div className={`rounded-xl px-4 py-3 flex items-center justify-between text-sm ${
+          uploadResult.imported > 0
+            ? "bg-green-50 text-green-700 border border-green-200"
+            : "bg-red-50 text-red-700 border border-red-200"
+        }`}>
           <span>{uploadResult.message}</span>
-          <button onClick={() => setUploadResult(null)}>
-            <X size={16} />
-          </button>
+          <button onClick={() => setUploadResult(null)}><X size={16} /></button>
         </div>
       )}
 
@@ -344,19 +341,13 @@ export default function ProductsPage() {
             <h2 className="text-base font-bold text-[#0F172A]">
               {editingId ? "Edit Product" : "Add New Product"}
             </h2>
-            <button
-              onClick={resetForm}
-              className="text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
               <X size={20} />
             </button>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Product Name *
-              </label>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Product Name *</label>
               <input
                 type="text"
                 placeholder="e.g. Velvet Pillow 45x45cm"
@@ -365,11 +356,8 @@ export default function ProductsPage() {
                 className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/5 transition-all"
               />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                SKU / Product Code
-              </label>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">SKU / Product Code</label>
               <input
                 type="text"
                 placeholder="e.g. HOR122"
@@ -378,11 +366,8 @@ export default function ProductsPage() {
                 className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/5 transition-all"
               />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Category
-              </label>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Category</label>
               <input
                 type="text"
                 placeholder="e.g. Pillows, Sofas, Curtains"
@@ -391,11 +376,8 @@ export default function ProductsPage() {
                 className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/5 transition-all"
               />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Price (KES)
-              </label>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Price (KES)</label>
               <input
                 type="number"
                 min="0"
@@ -406,11 +388,8 @@ export default function ProductsPage() {
                 className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/5 transition-all"
               />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Stock
-              </label>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Stock</label>
               <input
                 type="number"
                 min="0"
@@ -420,44 +399,31 @@ export default function ProductsPage() {
                 className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/5 transition-all"
               />
             </div>
-
             <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Description
-              </label>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Description</label>
               <textarea
                 placeholder="Describe the product — material, size, color, use case..."
                 value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={3}
                 className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/5 transition-all resize-none"
               />
             </div>
-
             <div className="flex items-center gap-3 sm:col-span-2">
               <button
                 type="button"
-                onClick={() =>
-                  setForm({ ...form, is_active: !form.is_active })
-                }
+                onClick={() => setForm({ ...form, is_active: !form.is_active })}
                 className="transition-transform active:scale-95"
               >
-                {form.is_active ? (
-                  <ToggleRight size={32} className="text-[#25D366]" />
-                ) : (
-                  <ToggleLeft size={32} className="text-gray-300" />
-                )}
+                {form.is_active
+                  ? <ToggleRight size={32} className="text-[#25D366]" />
+                  : <ToggleLeft size={32} className="text-gray-300" />}
               </button>
               <span className="text-sm text-gray-500">
-                {form.is_active
-                  ? "Product is active (visible to AI agent)"
-                  : "Product is inactive (hidden from AI agent)"}
+                {form.is_active ? "Product is active (visible to AI agent)" : "Product is inactive (hidden from AI agent)"}
               </span>
             </div>
           </div>
-
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={handleSave}
@@ -465,16 +431,9 @@ export default function ProductsPage() {
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#128C7E] disabled:opacity-60 text-white px-8 py-3 rounded-xl text-sm font-bold shadow-lg shadow-[#25D366]/20 transition-all"
             >
               <Save size={15} />
-              {saving
-                ? "Saving..."
-                : editingId
-                  ? "Update Product"
-                  : "Add Product"}
+              {saving ? "Saving..." : editingId ? "Update Product" : "Add Product"}
             </button>
-            <button
-              onClick={resetForm}
-              className="flex-1 sm:flex-none px-6 py-3 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-            >
+            <button onClick={resetForm} className="flex-1 sm:flex-none px-6 py-3 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors">
               Cancel
             </button>
           </div>
@@ -484,10 +443,7 @@ export default function ProductsPage() {
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search
-            size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search products..."
@@ -505,15 +461,10 @@ export default function ProductsPage() {
             >
               <option value="">All Categories</option>
               {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
+                <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
-            <ChevronDown
-              size={14}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-            />
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
         )}
       </div>
@@ -524,12 +475,26 @@ export default function ProductsPage() {
           <div className="flex items-center gap-2">
             <Package size={16} className="text-[#25D366]" />
             <span className="text-sm font-bold text-[#0F172A] uppercase tracking-wide">
-              {loading ? "Loading..." : `${products.length} Products`}
+              {loading ? "Loading..." : `${total} Products`}
             </span>
           </div>
-          <span className="text-xs text-gray-400 hidden sm:block">
-            The AI agent can access all active products
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400 hidden sm:block">
+              The AI agent can access all active products
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400">Show</span>
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-[#25D366] bg-white text-gray-600"
+              >
+                {PAGE_SIZE_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {loading ? (
@@ -542,25 +507,16 @@ export default function ProductsPage() {
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
               <Package size={24} className="text-gray-300" />
             </div>
-            <p className="text-base font-medium text-gray-600">
-              No products yet
-            </p>
+            <p className="text-base font-medium text-gray-600">No products yet</p>
             <p className="text-sm text-gray-400 mt-1 max-w-xs">
-              Add products manually or import a CSV file. The AI agent will use
-              these to answer customer questions.
+              Add products manually or import a CSV file. The AI agent will use these to answer customer questions.
             </p>
             <div className="flex items-center gap-3 mt-6">
-              <button
-                onClick={() => setShowForm(true)}
-                className="text-[#25D366] font-bold text-sm hover:underline"
-              >
+              <button onClick={() => setShowForm(true)} className="text-[#25D366] font-bold text-sm hover:underline">
                 + Add manually
               </button>
               <span className="text-gray-300">or</span>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="text-[#25D366] font-bold text-sm hover:underline"
-              >
+              <button onClick={() => fileInputRef.current?.click()} className="text-[#25D366] font-bold text-sm hover:underline">
                 Import CSV
               </button>
             </div>
@@ -572,103 +528,51 @@ export default function ProductsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Product
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      SKU
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Category
-                    </th>
-                    <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Price
-                    </th>
-                    <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Stock
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Actions
-                    </th>
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Product</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">SKU</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Category</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Price</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Stock</th>
+                    <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">Status</th>
+                    <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {products.map((product) => (
-                    <tr
-                      key={product.id}
-                      className="group hover:bg-gray-50 transition-colors"
-                    >
+                    <tr key={product.id} className="group hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-semibold text-[#0F172A]">
-                            {product.name}
-                          </p>
+                          <p className="font-semibold text-[#0F172A]">{product.name}</p>
                           {product.description && (
-                            <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
-                              {product.description}
-                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{product.description}</p>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        {product.sku ? (
-                          <span className="font-mono text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                            {product.sku}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
+                        {product.sku
+                          ? <span className="font-mono text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{product.sku}</span>
+                          : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-4">
-                        {product.category ? (
-                          <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-medium">
-                            {product.category}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
+                        {product.category
+                          ? <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-medium">{product.category}</span>
+                          : <span className="text-gray-300">—</span>}
                       </td>
-                      <td className="px-4 py-4 text-right font-semibold text-[#0F172A]">
-                        {formatPrice(product.price)}
-                      </td>
-                      <td className="px-4 py-4 text-right text-gray-500">
-                        {product.stock}
-                      </td>
+                      <td className="px-4 py-4 text-right font-semibold text-[#0F172A]">{formatPrice(product.price)}</td>
+                      <td className="px-4 py-4 text-right text-gray-500">{product.stock}</td>
                       <td className="px-4 py-4 text-center">
-                        <button
-                          onClick={() => handleToggle(product)}
-                          className="transition-transform active:scale-95"
-                        >
-                          {product.is_active ? (
-                            <ToggleRight
-                              size={28}
-                              className="text-[#25D366] mx-auto"
-                            />
-                          ) : (
-                            <ToggleLeft
-                              size={28}
-                              className="text-gray-300 mx-auto"
-                            />
-                          )}
+                        <button onClick={() => handleToggle(product)} className="transition-transform active:scale-95">
+                          {product.is_active
+                            ? <ToggleRight size={28} className="text-[#25D366] mx-auto" />
+                            : <ToggleLeft size={28} className="text-gray-300 mx-auto" />}
                         </button>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => handleEdit(product)}
-                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-all"
-                            title="Edit"
-                          >
+                          <button onClick={() => handleEdit(product)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-all" title="Edit">
                             <Edit3 size={15} />
                           </button>
-                          <button
-                            onClick={() => handleDelete(product.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
-                            title="Delete"
-                          >
+                          <button onClick={() => handleDelete(product.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all" title="Delete">
                             <Trash2 size={15} />
                           </button>
                         </div>
@@ -682,62 +586,83 @@ export default function ProductsPage() {
             {/* Mobile Cards */}
             <div className="sm:hidden divide-y divide-gray-50">
               {products.map((product) => (
-                <div
-                  key={product.id}
-                  className="px-4 py-4 flex items-start justify-between gap-4"
-                >
+                <div key={product.id} className="px-4 py-4 flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <p className="text-sm font-bold text-[#0F172A]">
-                        {product.name}
-                      </p>
+                      <p className="text-sm font-bold text-[#0F172A]">{product.name}</p>
                       {product.sku && (
-                        <span className="text-[10px] font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                          {product.sku}
-                        </span>
+                        <span className="text-[10px] font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{product.sku}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap mt-0.5">
-                      <span className="font-semibold text-[#0F172A]">
-                        {formatPrice(product.price)}
-                      </span>
+                      <span className="font-semibold text-[#0F172A]">{formatPrice(product.price)}</span>
                       <span>•</span>
                       <span>Stock: {product.stock}</span>
                       {product.category && (
                         <>
                           <span>•</span>
-                          <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">
-                            {product.category}
-                          </span>
+                          <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">{product.category}</span>
                         </>
                       )}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg p-1 shadow-sm">
-                      <button
-                        onClick={() => handleEdit(product)}
-                        className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-all"
-                      >
+                      <button onClick={() => handleEdit(product)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-all">
                         <Edit3 size={14} />
                       </button>
-                      <button
-                        onClick={() => handleDelete(product.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
-                      >
+                      <button onClick={() => handleDelete(product.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all">
                         <Trash2 size={14} />
                       </button>
                     </div>
                     <button onClick={() => handleToggle(product)}>
-                      {product.is_active ? (
-                        <ToggleRight size={26} className="text-[#25D366]" />
-                      ) : (
-                        <ToggleLeft size={26} className="text-gray-300" />
-                      )}
+                      {product.is_active
+                        ? <ToggleRight size={26} className="text-[#25D366]" />
+                        : <ToggleLeft size={26} className="text-gray-300" />}
                     </button>
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Pagination */}
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-4">
+              <span className="text-xs text-gray-400">
+                {total === 0 ? "No results" : `Showing ${startRecord}–${endRecord} of ${total}`}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(1)}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors text-xs font-medium px-2"
+                >
+                  First
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-xs text-gray-600 px-2 font-medium">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <button
+                  onClick={() => setPage(totalPages)}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors text-xs font-medium px-2"
+                >
+                  Last
+                </button>
+              </div>
             </div>
           </>
         )}
