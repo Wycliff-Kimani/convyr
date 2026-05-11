@@ -51,7 +51,8 @@ async def get_matching_automation(message_text: str, contact_id: str, business_i
     matched_rule = None
 
     for rule in keyword_automations:
-        if rule["keyword"].lower() in text_lower:
+        keywords = [k.strip().lower() for k in rule["keyword"].split(",") if k.strip()]
+        if any(keyword in text_lower for keyword in keywords):
             matched_rule = rule
             break
 

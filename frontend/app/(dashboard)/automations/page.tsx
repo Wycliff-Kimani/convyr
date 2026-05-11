@@ -352,6 +352,9 @@ export default function AutomationsPage() {
                     Not case sensitive
                   </span>
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Separate multiple keywords with commas, e.g. price, cost, how much, bei
+                </p>
               </div>
             )}
 
